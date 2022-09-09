@@ -1,6 +1,6 @@
-# From https://lists.x.org/archives/xorg-announce/2020-August/003059.html
-sha256  e219f2e0dfe455467939149d7cd2ee53b79b512cc1d2094ae4f5c9ed9ccd3571  xorg-server-1.20.9.tar.bz2
-sha512  d9b5f93e1b9763a89187d8b272aa7d4ce9709641b8539f4536708af153310e5a4931bffd4229c51a3b0e3b12da7838750aa71b635751fb4c0bb27438cce4e5e6  xorg-server-1.20.9.tar.bz2
+# From https://lists.x.org/archives/xorg-announce/2022-July/003193.html
+sha256  5cc4be8ee47edb58d4a90e603a59d56b40291ad38371b0bd2471fc3cbee1c587  xorg-server-21.1.4.tar.xz
+sha512  eb5b8520d02908f72719e6ecfbf7a9bf139acb65ccae04d1db4223a8a2384cd3a94bd5afef10cce327b751b800cc2b79bfaa5ae35c95c3a217f775168082e68f  xorg-server-21.1.4.tar.xz
 
 # Locally calculated
 sha256  4cc0447a22635c7b2f1a93fec4aa94f1970fadeb72a063de006b51cf4963a06f  COPYING
