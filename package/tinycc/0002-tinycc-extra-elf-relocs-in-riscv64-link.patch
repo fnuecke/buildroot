@@ -1,0 +1,57 @@
+--- tinycc-e9f59c804d41da9ba56493d5882fb75340d23c8e/riscv64-link.c
++++ tinycc-e9f59c804d41da9ba56493d5882fb75340d23c8e/riscv64-link.c.patched
+@@ -79,6 +79,9 @@
+     case R_RISCV_PCREL_LO12_I:
+     case R_RISCV_PCREL_LO12_S:
+     case R_RISCV_32_PCREL:
++    case R_RISCV_HI20:
++    case R_RISCV_LO12_I:
++    case R_RISCV_LO12_S:
+     case R_RISCV_ADD32:
+     case R_RISCV_ADD64:
+     case R_RISCV_SUB32:
+@@ -208,10 +211,12 @@
+                            | (((val - addr) & 0xfff) << 20));
+         return;
+     case R_RISCV_PCREL_HI20:
++    case R_RISCV_HI20:
+ #ifdef DEBUG_RELOC
+         printf("PCREL_HI20: val=%lx addr=%lx\n", (long)val, (long)addr);
+ #endif
+-        off64 = (int64_t)(val - addr + 0x800) >> 12;
++        off64 = type == R_RISCV_PCREL_HI20 ? -addr : 0;
++        off64 = (int64_t)(val + off64 + 0x800) >> 12;
+         if ((off64 + ((uint64_t)1 << 20)) >> 21)
+           tcc_error("R_RISCV_PCREL_HI20 relocation failed: off=%lx cond=%lx sym=%s",
+                     (long)off64, (long)((int64_t)(off64 + ((uint64_t)1 << 20)) >> 21),
+@@ -232,22 +237,26 @@
+                        | ((off64 & 0xfffff) << 12));
+         return;
+     case R_RISCV_PCREL_LO12_I:
++    case R_RISCV_LO12_I:
+ #ifdef DEBUG_RELOC
+         printf("PCREL_LO12_I: val=%lx addr=%lx\n", (long)val, (long)addr);
+ #endif
+-        if (val != last_hi.addr)
++        if (type == R_RISCV_PCREL_LO12_I && val != last_hi.addr)
+           tcc_error("unsupported hi/lo pcrel reloc scheme");
+         val = last_hi.val;
+         addr = last_hi.addr;
++        off64 = type == R_RISCV_PCREL_LO12_I ? -addr : 0;
+         write32le(ptr, (read32le(ptr) & 0xfffff)
+-                       | (((val - addr) & 0xfff) << 20));
++                       | (((val + off64) & 0xfff) << 20));
+         return;
+     case R_RISCV_PCREL_LO12_S:
+-        if (val != last_hi.addr)
++    case R_RISCV_LO12_S:
++        if (type == R_RISCV_PCREL_LO12_I && val != last_hi.addr)
+           tcc_error("unsupported hi/lo pcrel reloc scheme");
+         val = last_hi.val;
+         addr = last_hi.addr;
+-        off32 = val - addr;
++        off64 = type == R_RISCV_PCREL_LO12_S ? -addr : 0;
++        off32 = val + off64;
+         write32le(ptr, (read32le(ptr) & ~0xfe000f80)
+                        | ((off32 & 0xfe0) << 20)
+                        | ((off32 & 0x01f) << 7));

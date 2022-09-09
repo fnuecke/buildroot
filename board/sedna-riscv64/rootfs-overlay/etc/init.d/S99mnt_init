@@ -1,0 +1,71 @@
+#!/bin/sh
+
+# Run all init scripts in mounted file systems at /mnt/*/init.d
+# This allows adding extra init scripts later on without having
+# to rebuild the rootfs.
+
+start() {
+    # Start all init scripts in /etc/init.d
+    # executing them in numerical order.
+    #
+    for i in /mnt/*/init.d/S??* ;do
+
+         # Ignore dangling symlinks (if any).
+         [ ! -f "$i" ] && continue
+
+         case "$i" in
+            *.sh)
+                # Source shell script for speed.
+                (
+                    trap - INT QUIT TSTP
+                    set start
+                    . $i
+                )
+                ;;
+            *)
+                # No sh extension, so fork subprocess.
+                $i start
+                ;;
+        esac
+    done
+}
+
+stop() {
+    # Stop all init scripts in /etc/init.d
+    # executing them in reversed numerical order.
+    #
+    for i in $(ls -r /mnt/*/init.d/S??*) ;do
+
+         # Ignore dangling symlinks (if any).
+         [ ! -f "$i" ] && continue
+
+         case "$i" in
+            *.sh)
+                # Source shell script for speed.
+                (
+                    trap - INT QUIT TSTP
+                    set stop
+                    . $i
+                )
+                ;;
+            *)
+                # No sh extension, so fork subprocess.
+                $i stop
+                ;;
+        esac
+    done
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    *)
+        echo "Usage: $0 {start|stop}"
+        exit 1
+esac
+
+exit $?

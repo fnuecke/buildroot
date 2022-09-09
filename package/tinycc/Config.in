@@ -1,0 +1,8 @@
+config BR2_PACKAGE_TINYCC
+	bool "tinycc"
+	select BR2_PACKAGE_HAS_TINYCC
+	help
+	  Tiny C Compiler - C Scripting Everywhere - The Smallest ANSI C compiler
+
+	  https://github.com/frida/tinycc
+

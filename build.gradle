@@ -1,0 +1,93 @@
+plugins {
+    id 'java'
+    id 'maven-publish'
+}
+
+def getGitRef() {
+    try {
+        final def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'rev-parse', '--short', 'HEAD'
+            standardOutput = stdout
+        }
+        return stdout.toString().trim()
+    } catch (final Throwable ignored) {
+        return 'unknown'
+    }
+}
+
+version = "${semver}+${getGitRef()}"
+group = 'li.cil.sedna'
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+repositories {
+    mavenCentral()
+}
+
+
+import org.apache.tools.ant.taskdefs.condition.Os
+
+task cleanBuildroot(type: Exec) {
+    if (Os.isFamily(Os.FAMILY_UNIX)) {
+        commandLine("make", "clean")
+    }
+}
+clean.dependsOn cleanBuildroot
+
+task compileBuildroot(type: Exec) {
+    if (Os.isFamily(Os.FAMILY_UNIX)) {
+        commandLine("make")
+    } else {
+        logger.log(LogLevel.WARN, "Can only make buildroot on Linux. Expecting output files to have been manually placed in [output/images/].")
+        enabled = false
+    }
+    outputs.files "output/images/fw_jump.bin", "output/images/Image", "output/images/rootfs.ext2"
+    outputs.upToDateWhen { false }
+}
+
+task generateLegalInfo(type: Exec) {
+    if (Os.isFamily(Os.FAMILY_UNIX)) {
+        commandLine("make", "legal-info")
+    } else {
+        enabled = false
+    }
+    outputs.dirs "output/legal-info/licenses"
+    outputs.upToDateWhen { false }
+}
+
+task copyBuildrootImages(type: Copy) {
+    from compileBuildroot.outputs.files
+    into "src/main/resources/generated/"
+}
+
+task copyBuildrootLicenses(type: Copy) {
+    from generateLegalInfo.outputs.files
+    into "src/main/resources/licenses/"
+}
+
+copyBuildrootImages.dependsOn(compileBuildroot)
+copyBuildrootImages.dependsOn(generateLegalInfo)
+compileJava.dependsOn(copyBuildrootImages)
+compileJava.dependsOn(copyBuildrootLicenses)
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            groupId = project.group
+            artifactId = project.name
+            version = semver
+            artifact jar
+        }
+    }
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = System.getenv("GITHUB_MAVEN_URL") ?: ""
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
+}
