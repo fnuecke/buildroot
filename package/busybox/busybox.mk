@@ -328,17 +328,11 @@ define BUSYBOX_LINUX_PAM
 endef
 endif
 
-# Telnet support
+# HTTPD support
 define BUSYBOX_INSTALL_TELNET_SCRIPT
 	if grep -q CONFIG_FEATURE_TELNETD_STANDALONE=y $(@D)/.config; then \
-		$(INSTALL) -m 0755 -D package/busybox/S50telnet \
-			$(TARGET_DIR)/etc/init.d/S50telnet ; \
-	fi
-endef
-define BUSYBOX_INSTALL_TELNET_SERVICE
-	if grep -q CONFIG_FEATURE_TELNETD_STANDALONE=y $(@D)/.config; then \
-		$(INSTALL) -D -m 0644 package/busybox/telnetd.service \
-			$(TARGET_DIR)/usr/lib/systemd/system/telnetd.service ; \
+		$(INSTALL) -m 0755 -D package/busybox/S51http \
+			$(TARGET_DIR)/etc/init.d/S51http ; \
 	fi
 endef
 
