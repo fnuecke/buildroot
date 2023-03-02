@@ -1,3 +1,23 @@
+2023.02-rc2, released February 27th, 2023
+
+	Fixes all over the tree.
+
+	Updated/fixed packages: asterisk, at91dataflashboot, bind,
+	efivar, erlang, flac, fluent-bit, freerdp, gcc, gdal, gerbera,
+	gnuradio, gqrx, haproxy, hawktracer, imx-gpu-g2d,
+	intel-gmmlib, libarchive, libblockdev, libcamera-apps, libjxl,
+	libmodsecurity, libsigrokdecode, lightning, lirc-tools,
+	lttng-babeltrace, modem-manager, modsecurity2,
+	multipath-tools, mutt, mxs-bootlets, netsurf, network-manager,
+	nginx-naxsi, ntpsec, opensbi, optee-client, pcm-tools,
+	php-xdebug, pistache, postgresql, proxychains-ng,
+	python-m2crypto, python-numpy, python-webargs,
+	python-werkzeug, rtl8723bu, rtty, speechd, sudo, systemd,
+	tiff, tmux, wilc-driver, wpa_supplicant, xerces,
+	xtables-addons, xwayland, zabbix
+
+	Removed packages: uccp420wlan
+
 2023.02-rc1, released February 20th, 2023
 
 	Numerous package updates and many (62) new packages.
@@ -77,6 +97,42 @@
 	#15161: kernel can't support SUBDIR
 	#15196: Setting BR2_PACKAGE_RPI_FIRMWARE_CONFIG_FILE does not work
 	#15226: lsblk: not found
+	#15271: no start-qemu.sh
+	#15281: Error compiling GDAL library for RPi-64 if libgdal-dev install..
+	#15291: BR2_PACKAGE_GNU_EFI_ARCH_SUPPORTS without location
+	#15301: Selecting NAND Flash boot media (NAND_BOOT) breaks the uboot..
+	#15331: Warning on python-flit-core license when generating legal info
+
+2022.11.2, released March 1st, 2023
+
+	Important / security related fixes.
+
+	Fix make O=..._defconfig builds (regression in 2022.11.1).
+
+	A number of additional/stricter checks have been added to
+	./utils/check-package.
+
+	Build host dependencies check extended to check for a number
+	of specific perl modules to better handle distributions (like
+	Fedora) with very fine grained perl packages. Also ensure
+	build host has git >= 2.0.0 when using packages written in
+	go/rust because the vendoring may need it.
+
+	Defconfigs: ASUS tinker rk3288: Fix boot issue related to TPL
+
+	Updated/fixed packages: afboot-stm32, apache, barebox, c-ares,
+	elf2flt, freeswitch, fwts, gcc, gdal, git, gitlab-runner,
+	ipmitool, kodi, libgit2, libks, libopenssl, libressl, live555,
+	lua, lxc, mariadb, mesa3d-headers, modsecurity2, mongoose,
+	netopeer2, nodejs, openjdk, openpowerlink, openvpn, opusfile,
+	postgresql, proftpd, pugixml, python-future, python-idna, qt5,
+	rtl8192eu, rtl8723ds, sdl2, sofia-sip, ssdp-responder, sudo,
+	sunxi-mali-utgard, thermald, ti-sgx-km, tmux, uboot, upx, vim,
+	webkitgtk, wolfssl, wpewebkit, xlib_libXpm,
+	xserver_xorg-server, xxhash, xz, yajl, zabbix
+
+	Issues resolved (http://bugs.uclibc.org):
+
 	#15271: no start-qemu.sh
 	#15281: Error compiling GDAL library for RPi-64 if libgdal-dev install..
 	#15291: BR2_PACKAGE_GNU_EFI_ARCH_SUPPORTS without location
@@ -664,6 +720,38 @@
 	#14721: python-argon2_cffi no longer works
 	#14731: BR2_PACKAGE_IOSTAT
 	#14751: LVM2 Outdated Link
+
+2022.02.10, released March 1st, 2023
+
+	Important / security related fixes.
+
+	Fix make O=..._defconfig builds (regression in 2022.02.9).
+
+	A number of additional/stricter checks have been added to
+	./utils/check-package.
+
+	Build host dependencies check extended to check for a number
+	of specific perl modules to better handle distributions (like
+	Fedora) with very fine grained perl packages. Also ensure
+	build host has git >= 2.0.0 when using packages written in
+	go/rust because the vendoring may need it.
+
+	Defconfigs: ASUS tinker rk3288: Fix boot issue related to TPL
+
+	Updated/fixed packages: afboot-stm32, apache, barebox, c-ares,
+	elf2flt, freeswitch, fwts, gcc, git, kodi, libgit2, libks,
+	libopenssl, live555, lua, lxc, mesa3d-headers, modsecurity2,
+	netopeer2, openjdk, openpowerlink, openvpn, opusfile,
+	postgresql, pugixml, python-future, qt5, sdl2, sofia-sip,
+	ssdp-responder, sudo, sunxi-mali-utgard, ti-sgx-km, tmux,
+	uboot, upx, vim, webkitgtk, wolfssl, wpewebkit, xlib_libXpm,
+	xserver_xorg-server, xxhash, xz, yajl, zabbix
+
+	Issues resolved (http://bugs.uclibc.org):
+
+	#15271: no start-qemu.sh
+	#15291: BR2_PACKAGE_GNU_EFI_ARCH_SUPPORTS without location
+	#15301: Selecting NAND Flash boot media (NAND_BOOT) breaks the uboot..
 
 2022.02.9, released January 18th, 2023
 
