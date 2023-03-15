@@ -4,7 +4,6 @@
 /.config.cmd
 /.config.old
 /..config.tmp
-/.config
 *.depend
 *.o
 /*.patch
@@ -13,3 +12,50 @@
 *.rej
 *~
 *.pyc
+
+# eclipse
+bin/
+tmp/
+*.launch
+*.tmp
+*.bak
+*.swp
+*.launch
+.settings/
+.metadata
+.classpath
+.project
+local.properties
+
+# idea
+out/
+*.ipr
+*.iws
+*.iml
+.idea
+
+# gradle
+build/
+.gradle
+
+# Java
+*.class
+*.log
+hs_err_pid*
+
+# Windows
+Thumbs.db
+[Dd]esktop.ini
+*.lnk
+
+# Linux
+*~
+
+# OSX
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Generated resources
+/src/main/resources/generated/*

@@ -1,0 +1,59 @@
+#!/bin/sh
+
+TAGS_PATTERN="/sys/bus/virtio/drivers/9pnet_virtio/virtio*/mount_tag"
+INIT_PREFIX="/etc/profile.d"
+
+start() {
+	printf 'Mounting virtual file systems: '
+	if [ 0 -lt $(ls $TAGS_PATTERN 2>/dev/null | wc -w) ]; then
+		for mount_tag in $TAGS_PATTERN
+		do
+			tag=`cat $mount_tag`
+			# printf 'Mounting tag "%s".\n' "$tag"
+			mkdir -p "/mnt/$tag"
+			mount -t 9p -o trans=virtio,version=9p2000.L $tag "/mnt/$tag"
+
+			init_tag="$INIT_PREFIX/01_init_tag_$tag.sh"
+			if [ ! -f "$init_tag" ]; then
+				tag_bin="/mnt/$tag/bin"
+				echo 'export PATH="$PATH:'"$tag_bin"'"' > "$init_tag"
+			fi
+		done
+	fi
+	printf 'OK\n'
+	return 0
+}
+
+stop() {
+	printf 'Unmounting virtual file systems: '
+	if [ 0 -lt $(ls $TAGS_PATTERN 2>/dev/null | wc -w) ]; then
+		for mount_tag in $TAGS_PATTERN 
+		do
+			tag=`cat $mount_tag`
+			# printf 'Unmounting tag "%s".\n' "$tag"
+		umount "/mnt/$tag"
+		done
+	fi
+	printf 'OK\n'
+	return 0
+}
+
+restart() {
+	stop
+	sleep 1
+	start
+}
+
+case "$1" in
+	start|stop|restart)
+		"$1";;
+	reload)
+		# Restart, since there is no true "reload" feature.
+		restart;;
+	*)
+		echo "Usage: $0 {start|stop|restart|reload}"
+		exit 1
+esac
+
+exit $?
+

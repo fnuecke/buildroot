@@ -1,0 +1,46 @@
+#!/bin/sh
+#
+# Starts busybox httpd.
+#
+
+start() {
+    printf "Starting httpd: "
+    umask 022
+    [ -d /var/www/html ] || mkdir -p /var/www/html
+    start-stop-daemon -S -q -m -p /var/run/httpd.pid \
+        --exec /usr/sbin/httpd -- -h /var/www/html
+    pid=$(($(cat /var/run/httpd.pid)+1))
+    printf "%s\n" "$pid" > /var/run/httpd.pid
+    [ $? -eq 0 ] && printf "OK\n" || printf "FAIL\n"
+}
+
+stop() {
+    printf "Stopping httpd: "
+    start-stop-daemon -K -q -p /var/run/httpd.pid
+    [ $? -eq 0 ] && printf "OK\n" || printf "FAIL\n"
+}
+
+restart() {
+    stop
+    start
+}
+
+case "$1" in
+    start)
+        start
+    ;;
+
+    stop)
+        stop
+    ;;
+
+    restart|reload)
+        restart
+    ;;
+
+    *)
+        printf "Usage: %s {start|stop|restart}" "$0"
+        exit 0
+esac
+
+exit $?
