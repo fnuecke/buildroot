@@ -1,6 +1,7 @@
 /output
 /dl
 /.auto.deps
+/.config
 /.config.cmd
 /.config.old
 /..config.tmp
@@ -59,3 +60,4 @@ Thumbs.db
 
 # Generated resources
 /src/main/resources/generated/*
+/src/main/resources/licenses/*
