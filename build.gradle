@@ -5,12 +5,11 @@ plugins {
 
 def getGitRef() {
     try {
-        final def stdout = new ByteArrayOutputStream()
-        exec {
+        final def ref = providers.exec {
             commandLine 'git', 'rev-parse', '--short', 'HEAD'
-            standardOutput = stdout
-        }
-        return stdout.toString().trim()
+            ignoreExitValue = true
+        }.standardOutput.asText.get().trim()
+        return ref.isEmpty() ? 'unknown' : ref
     } catch (final Throwable ignored) {
         return 'unknown'
     }
@@ -28,40 +27,101 @@ repositories {
 
 import org.apache.tools.ant.taskdefs.condition.Os
 
+import java.nio.file.Files
+
+final def buildrootDockerImage = (project.findProperty("buildrootDockerImage") ?: "buildroot/base:20200814.2228").toString()
+final def buildrootDockerHome = file("output/.docker-home")
+
+final def findExecutable = { final String name ->
+    System.getenv("PATH")?.split(File.pathSeparator)?.collect { new File(it, name) }?.find { it.isFile() && it.canExecute() }
+}
+
+final boolean isUnix = Os.isFamily(Os.FAMILY_UNIX)
+final boolean hasDocker = findExecutable("docker") != null
+final boolean useDocker = isUnix && hasDocker && !project.hasProperty("buildrootNativeMake")
+
+final def makeCommandLine = { final List<String> args ->
+    if (!useDocker) {
+        return args
+    }
+    final def uid = Files.getAttribute(projectDir.toPath(), "unix:uid")
+    final def gid = Files.getAttribute(projectDir.toPath(), "unix:gid")
+    return ["docker", "run", "--rm",
+            "-u", "${uid}:${gid}".toString(),
+            "-v", "${projectDir}:/build".toString(),
+            "-w", "/build",
+            "-e", "HOME=/build/output/.docker-home"] + [buildrootDockerImage] + args
+}
+
+final def warnIfNativeMake = {
+    if (isUnix && !useDocker) {
+        logger.log(LogLevel.WARN, hasDocker
+            ? "Running buildroot's make on the host (-PbuildrootNativeMake). This is not expected to succeed on a modern distribution."
+            : "docker not found; falling back to a native buildroot make. This is not expected to succeed on a modern distribution.")
+    }
+}
+
+final def buildrootDefconfig = file("configs/sedna-riscv64_defconfig")
+final def buildrootConfig = file(".config")
+
+task configureBuildroot(type: Exec) {
+    if (!isUnix) {
+        enabled = false
+    } else {
+        commandLine(makeCommandLine(["make", "sedna-riscv64_defconfig"]))
+        doFirst { buildrootDockerHome.mkdirs() }
+    }
+    inputs.file buildrootDefconfig
+    outputs.file buildrootConfig
+    onlyIf { !buildrootConfig.exists() }
+}
+
 task cleanBuildroot(type: Exec) {
-    if (Os.isFamily(Os.FAMILY_UNIX)) {
-        commandLine("make", "clean")
+    if (isUnix) {
+        commandLine(makeCommandLine(["make", "clean"]))
+        dependsOn configureBuildroot
+    } else {
+        enabled = false
     }
 }
 clean.dependsOn cleanBuildroot
 
+final def buildrootImages = ["output/images/fw_jump.bin", "output/images/Image", "output/images/rootfs.ext2"]
+
 task compileBuildroot(type: Exec) {
-    if (Os.isFamily(Os.FAMILY_UNIX)) {
-        commandLine("make")
-    } else {
+    if (!isUnix) {
         logger.log(LogLevel.WARN, "Can only make buildroot on Linux. Expecting output files to have been manually placed in [output/images/].")
         enabled = false
+    } else {
+        warnIfNativeMake()
+        commandLine(makeCommandLine(["make"]))
+        doFirst { buildrootDockerHome.mkdirs() }
     }
-    outputs.files "output/images/fw_jump.bin", "output/images/Image", "output/images/rootfs.ext2"
+    outputs.files buildrootImages
     outputs.upToDateWhen { false }
+    dependsOn configureBuildroot
 }
 
 task generateLegalInfo(type: Exec) {
-    if (Os.isFamily(Os.FAMILY_UNIX)) {
-        commandLine("make", "legal-info")
-    } else {
+    if (!isUnix) {
         enabled = false
+    } else {
+        commandLine(makeCommandLine(["make", "legal-info"]))
+        doFirst { buildrootDockerHome.mkdirs() }
     }
     outputs.dirs "output/legal-info/licenses"
     outputs.upToDateWhen { false }
+    dependsOn configureBuildroot
 }
 
 task copyBuildrootImages(type: Copy) {
+    doFirst { delete "src/main/resources/generated" }
     from compileBuildroot.outputs.files
     into "src/main/resources/generated/"
 }
 
 task copyBuildrootLicenses(type: Copy) {
+    doFirst { delete "src/main/resources/licenses" }
     from generateLegalInfo.outputs.files
     into "src/main/resources/licenses/"
 }
@@ -70,6 +130,8 @@ copyBuildrootImages.dependsOn(compileBuildroot)
 copyBuildrootImages.dependsOn(generateLegalInfo)
 compileJava.dependsOn(copyBuildrootImages)
 compileJava.dependsOn(copyBuildrootLicenses)
+processResources.dependsOn(copyBuildrootImages)
+processResources.dependsOn(copyBuildrootLicenses)
 
 publishing {
     publications {
