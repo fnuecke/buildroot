@@ -3,57 +3,115 @@ name: publish
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to use"
+        required: false
+        default: "0.0.0-dryrun"
+      publish:
+        description: "Publish to fnuecke/maven repository"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+env:
+  BUILDROOT_DOCKER_IMAGE: ${{ vars.BUILDROOT_DOCKER_IMAGE || 'buildroot/base:20200814.2228' }}
+  VERSION: ${{ github.event.release.tag_name || inputs.version }}
+  SHOULD_PUBLISH: ${{ github.event_name == 'release' || inputs.publish }}
 
 jobs:
-  build:
+  publish:
     name: publish
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
 
-      # See https://github.com/actions/virtual-environments/issues/2577#issuecomment-845126269
-      - name: Blocked mirror workaround
-        run: echo "1.1.1.1 invisible-mirror.net" | sudo tee -a /etc/hosts
+    steps:
+      - name: Check out buildroot
+        uses: actions/checkout@v4
+        with:
+          path: buildroot
+
+      - name: Check out the static Maven repository
+        if: env.SHOULD_PUBLISH == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: fnuecke/maven
+          token: ${{ secrets.MAVEN_REPO_TOKEN }}
+          path: maven
+
+      # A full buildroot build with its own toolchain needs ~8-12 GB; runners start with ~14 GB.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+                      /usr/local/share/boost /usr/local/.ghcup /usr/share/swift
+          sudo docker image prune -af
+          df -h /
 
       - name: Set up JDK
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v4
         with:
-          java-version: 17
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+          distribution: temurin
+          java-version: 21
+
       - name: Validate Gradle wrapper
-        uses: gradle/wrapper-validation-action@v1
-      - uses: actions/cache@v2
+        uses: gradle/actions/wrapper-validation@v4
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ubuntu-latest-gradle-${{ hashFiles('**/*.gradle*') }}
-          restore-keys: ubuntu-latest-gradle-
-      - uses: actions/cache@v2
+          key: gradle-${{ hashFiles('buildroot/**/*.gradle*', 'buildroot/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-
+
+      - name: Cache buildroot downloads
+        uses: actions/cache@v4
         with:
           path: |
-            dl
-            ~/.buildroot-ccache
-          key: ubuntu-latest-buildroot-${{ hashFiles('.config') }}
-          restore-keys: ubuntu-latest-buildroot-
+            buildroot/dl
+            buildroot/output/.docker-home
+          key: buildroot-${{ hashFiles('buildroot/configs/sedna-riscv64_defconfig') }}
+          restore-keys: buildroot-
+
+      - name: Pull the buildroot container image
+        run: docker pull "$BUILDROOT_DOCKER_IMAGE"
+
       - name: Build with Gradle
-        run: ./gradlew -Psemver='${{ github.event.release.tag_name }}' build
-        env:
-          GPR_USER: ${{ secrets.GPR_USER }}
-          GPR_KEY: ${{ secrets.GPR_KEY }}
+        working-directory: buildroot
+        run: >-
+          ./gradlew build
+          -Psemver="$VERSION"
+          -PbuildrootDockerImage="$BUILDROOT_DOCKER_IMAGE"
 
-      - name: Add Artifacts to Github Release
-        uses: alexellis/upload-assets@0.3.0
+      - name: Add artifacts to the GitHub release
+        if: github.event_name == 'release'
+        working-directory: buildroot
+        run: gh release upload "$VERSION" ./build/libs/*.jar --clobber
         env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          asset_paths: '["./build/libs/*.jar"]'
+          GH_TOKEN: ${{ github.token }}
 
-      - name: Publish to Github Packages
-        run: gradle -Psemver='${{ github.event.release.tag_name }}' publish
-        env:
-          GPR_USER: ${{ secrets.GPR_USER }}
-          GPR_KEY: ${{ secrets.GPR_KEY }}
-          GITHUB_MAVEN_URL: 'https://maven.pkg.github.com/${{ github.repository }}'
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish to the static Maven repository
+        if: env.SHOULD_PUBLISH == 'true'
+        working-directory: buildroot
+        run: >-
+          ./gradlew publish
+          -Psemver="$VERSION"
+          -PbuildrootDockerImage="$BUILDROOT_DOCKER_IMAGE"
+          -PmavenRepoDir="${{ github.workspace }}/maven"
+
+      - name: Commit and push the static Maven repository
+        if: env.SHOULD_PUBLISH == 'true'
+        working-directory: maven
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "${GITHUB_ACTOR_ID}+${GITHUB_ACTOR}@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Nothing to publish."
+            exit 0
+          fi
+          git commit -m "sedna-buildroot $VERSION"
+          git push

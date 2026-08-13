@@ -133,6 +133,10 @@ compileJava.dependsOn(copyBuildrootLicenses)
 processResources.dependsOn(copyBuildrootImages)
 processResources.dependsOn(copyBuildrootLicenses)
 
+jar {
+    archiveVersion = semver
+}
+
 publishing {
     publications {
         mavenJava(MavenPublication) {
@@ -140,15 +144,37 @@ publishing {
             artifactId = project.name
             version = semver
             artifact jar
+
+            pom {
+                name = "Sedna Buildroot"
+                description = "Prebuilt RISC-V Linux images (OpenSBI firmware, kernel and root filesystem) for the Sedna emulator."
+                url = "https://github.com/fnuecke/buildroot"
+                licenses {
+                    license {
+                        name = "GPL-2.0-or-later"
+                        url = "https://github.com/fnuecke/buildroot/blob/sedna/COPYING"
+                    }
+                }
+                developers {
+                    developer {
+                        id = "fnuecke"
+                        name = "Florian Nücke"
+                    }
+                }
+                scm {
+                    connection = "scm:git:https://github.com/fnuecke/buildroot.git"
+                    developerConnection = "scm:git:ssh://git@github.com/fnuecke/buildroot.git"
+                    url = "https://github.com/fnuecke/buildroot"
+                }
+            }
         }
     }
     repositories {
-        maven {
-            name = "GitHubPackages"
-            url = System.getenv("GITHUB_MAVEN_URL") ?: ""
-            credentials {
-                username = System.getenv("GITHUB_ACTOR")
-                password = System.getenv("GITHUB_TOKEN")
+        final def mavenRepoDir = project.findProperty("mavenRepoDir")?.toString()
+        if (mavenRepoDir) {
+            maven {
+                name = "StaticMavenRepo"
+                url = uri(file(mavenRepoDir))
             }
         }
     }
