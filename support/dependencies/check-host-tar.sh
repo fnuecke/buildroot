@@ -33,18 +33,22 @@ fi
 major_min=1
 minor_min=27
 
-# There used to be a maximum version of 1.29 here (1.30 changed --numeric-owner
-# output for filenames > 100 characters). Upstream buildroot has since dropped
-# the upper bound entirely (see upstream commit b11956fb66, "support/dependencies:
-# require tar >= 1.35"), because building host-tar 1.29 no longer compiles against
-# modern libacl headers. Dropping the cap lets a modern host tar be used directly.
+# Maximal version = 1.34 (1.35 changed devmajor/devminor for files)
+# https://lists.gnu.org/archive/html/info-gnu/2023-07/msg00005.html
+major_max=1
+minor_max=34
 
-if [ $major -lt $major_min ]; then
+if [ $major -lt $major_min -o $major -gt $major_max ]; then
 	# echo nothing: no suitable tar found
 	exit 1
 fi
 
 if [ $major -eq $major_min -a $minor -lt $minor_min ]; then
+	# echo nothing: no suitable tar found
+	exit 1
+fi
+
+if [ $major -eq $major_max -a $minor -gt $minor_max ]; then
 	# echo nothing: no suitable tar found
 	exit 1
 fi
