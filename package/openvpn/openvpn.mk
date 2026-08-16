@@ -4,19 +4,24 @@
 #
 ################################################################################
 
-OPENVPN_VERSION = 2.4.9
-OPENVPN_SOURCE = openvpn-$(OPENVPN_VERSION).tar.xz
-OPENVPN_SITE = http://swupdate.openvpn.net/community/releases
-OPENVPN_DEPENDENCIES = host-pkgconf
+OPENVPN_VERSION = 2.6.10
+OPENVPN_SITE = https://swupdate.openvpn.net/community/releases
+OPENVPN_DEPENDENCIES = host-pkgconf libcap-ng
 OPENVPN_LICENSE = GPL-2.0
 OPENVPN_LICENSE_FILES = COPYRIGHT.GPL
+OPENVPN_CPE_ID_VENDOR = openvpn
+OPENVPN_SELINUX_MODULES = openvpn
 OPENVPN_CONF_OPTS = \
-	--enable-iproute2 \
+	--disable-unit-tests \
 	$(if $(BR2_STATIC_LIBS),--disable-plugins)
-OPENVPN_CONF_ENV = IFCONFIG=/sbin/ifconfig \
-	NETSTAT=/bin/netstat \
-	ROUTE=/sbin/route \
-	IPROUTE=/sbin/ip
+OPENVPN_CONF_ENV = NETSTAT=/bin/netstat
+
+ifeq ($(BR2_PACKAGE_LIBNL)$(BR2_TOOLCHAIN_HEADERS_AT_LEAST_4_16),yy)
+OPENVPN_CONF_OPTS += --enable-dco
+OPENVPN_DEPENDENCIES += libnl
+else
+OPENVPN_CONF_OPTS += --disable-dco
+endif
 
 ifeq ($(BR2_PACKAGE_OPENVPN_SMALL),y)
 OPENVPN_CONF_OPTS += \
@@ -71,11 +76,6 @@ OPENVPN_CONF_OPTS += --enable-systemd
 else
 OPENVPN_CONF_OPTS += --disable-systemd
 endif
-
-define OPENVPN_INSTALL_TARGET_CMDS
-	$(INSTALL) -m 755 $(@D)/src/openvpn/openvpn \
-		$(TARGET_DIR)/usr/sbin/openvpn
-endef
 
 define OPENVPN_INSTALL_INIT_SYSV
 	$(INSTALL) -m 755 -D package/openvpn/S60openvpn \

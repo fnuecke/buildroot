@@ -4,25 +4,36 @@
 #
 ################################################################################
 
-POSTGRESQL_VERSION = 12.4
+POSTGRESQL_VERSION = 16.3
 POSTGRESQL_SOURCE = postgresql-$(POSTGRESQL_VERSION).tar.bz2
 POSTGRESQL_SITE = https://ftp.postgresql.org/pub/source/v$(POSTGRESQL_VERSION)
 POSTGRESQL_LICENSE = PostgreSQL
 POSTGRESQL_LICENSE_FILES = COPYRIGHT
+POSTGRESQL_CPE_ID_VENDOR = postgresql
+POSTGRESQL_SELINUX_MODULES = postgresql
 POSTGRESQL_INSTALL_STAGING = YES
 POSTGRESQL_CONFIG_SCRIPTS = pg_config
 POSTGRESQL_CONF_ENV = \
 	ac_cv_type_struct_sockaddr_in6=yes \
-	pgac_cv_snprintf_long_long_int_modifier="ll" \
-	pgac_cv_snprintf_size_t_support=yes \
+	pgac_cv_prog_cc_LDFLAGS_EX_BE__Wl___export_dynamic=yes \
 	LIBS=$(TARGET_NLS_LIBS)
 POSTGRESQL_CONF_OPTS = --disable-rpath
 POSTGRESQL_DEPENDENCIES = $(TARGET_NLS_DEPENDENCIES)
+
+# CVE-2017-8806 is related to postgresql-common package
+# It is false positive for postgresql
+POSTGRESQL_IGNORE_CVES += CVE-2017-8806
 
 # https://www.postgresql.org/docs/11/static/install-procedure.html:
 # "If you want to invoke the build from another makefile rather than
 # manually, you must unset MAKELEVEL or set it to zero"
 POSTGRESQL_MAKE_OPTS = MAKELEVEL=0
+
+ifeq ($(BR2_PACKAGE_POSTGRESQL_FULL),y)
+POSTGRESQL_MAKE_OPTS += world
+POSTGRESQL_INSTALL_TARGET_OPTS += DESTDIR=$(TARGET_DIR) install-world
+POSTGRESQL_INSTALL_STAGING_OPTS += DESTDIR=$(STAGING_DIR) install-world
+endif
 
 ifeq ($(BR2_TOOLCHAIN_USES_UCLIBC),y)
 # PostgreSQL does not build against uClibc with locales
@@ -32,11 +43,11 @@ ifeq ($(BR2_TOOLCHAIN_USES_UCLIBC),y)
 POSTGRESQL_CONF_ENV += pgac_cv_type_locale_t=no
 endif
 
-ifneq ($(BR2_TOOLCHAIN_HAS_THREADS),y)
+ifneq ($(BR2_TOOLCHAIN_HAS_THREADS_NPTL),y)
 POSTGRESQL_CONF_OPTS += --disable-thread-safety
 endif
 
-ifeq ($(BR2_arcle)$(BR2_arceb)$(BR2_microblazeel)$(BR2_microblazebe)$(BR2_or1k)$(BR2_nios2)$(BR2_riscv)$(BR2_xtensa)$(BR2_nds32),y)
+ifeq ($(BR2_arcle)$(BR2_arceb)$(BR2_microblazeel)$(BR2_microblazebe)$(BR2_or1k)$(BR2_nios2)$(BR2_riscv)$(BR2_xtensa),y)
 POSTGRESQL_CONF_OPTS += --disable-spinlocks
 endif
 
@@ -77,12 +88,33 @@ else
 POSTGRESQL_CONF_OPTS += --without-ldap
 endif
 
+ifeq ($(BR2_PACKAGE_ICU),y)
+POSTGRESQL_DEPENDENCIES += icu
+POSTGRESQL_CONF_OPTS += --with-icu
+else
+POSTGRESQL_CONF_OPTS += --without-icu
+endif
+
 ifeq ($(BR2_PACKAGE_LIBXML2),y)
 POSTGRESQL_DEPENDENCIES += libxml2
 POSTGRESQL_CONF_OPTS += --with-libxml
 POSTGRESQL_CONF_ENV += XML2_CONFIG=$(STAGING_DIR)/usr/bin/xml2-config
 else
 POSTGRESQL_CONF_OPTS += --without-libxml
+endif
+
+ifeq ($(BR2_PACKAGE_ZSTD),y)
+POSTGRESQL_DEPENDENCIES += host-pkgconf zstd
+POSTGRESQL_CONF_OPTS += --with-zstd
+else
+POSTGRESQL_CONF_OPTS += --without-zstd
+endif
+
+ifeq ($(BR2_PACKAGE_LZ4),y)
+POSTGRESQL_DEPENDENCIES += host-pkgconf lz4
+POSTGRESQL_CONF_OPTS += --with-lz4
+else
+POSTGRESQL_CONF_OPTS += --without-lz4
 endif
 
 # required for postgresql.service Type=notify
@@ -95,7 +127,7 @@ endif
 
 POSTGRESQL_CFLAGS = $(TARGET_CFLAGS)
 
-ifeq ($(BR2_TOOLCHAIN_HAS_GCC_BUG_85180),y)
+ifneq ($(BR2_TOOLCHAIN_HAS_GCC_BUG_43744)$(BR2_TOOLCHAIN_HAS_GCC_BUG_85180),)
 POSTGRESQL_CFLAGS += -O0
 endif
 
@@ -117,6 +149,8 @@ define POSTGRESQL_INSTALL_CUSTOM_PG_CONFIG
 		$(STAGING_DIR)/usr/bin/pg_config
 	$(SED) "s|@POSTGRESQL_CONF_OPTIONS@|$(POSTGRESQL_CONF_OPTS)|g" $(STAGING_DIR)/usr/bin/pg_config
 	$(SED) "s|@POSTGRESQL_VERSION@|$(POSTGRESQL_VERSION)|g" $(STAGING_DIR)/usr/bin/pg_config
+	$(SED) "s|@TARGET_CFLAGS@|$(TARGET_CFLAGS)|g" $(STAGING_DIR)/usr/bin/pg_config
+	$(SED) "s|@TARGET_CC@|$(TARGET_CC)|g" $(STAGING_DIR)/usr/bin/pg_config
 endef
 
 POSTGRESQL_POST_INSTALL_STAGING_HOOKS += POSTGRESQL_INSTALL_CUSTOM_PG_CONFIG

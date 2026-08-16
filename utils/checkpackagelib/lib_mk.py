@@ -13,15 +13,45 @@ from checkpackagelib.lib import EmptyLastLine          # noqa: F401
 from checkpackagelib.lib import NewlineAtEof           # noqa: F401
 from checkpackagelib.lib import TrailingSpace          # noqa: F401
 from checkpackagelib.lib import Utf8Characters         # noqa: F401
+from checkpackagelib.tool import NotExecutable         # noqa: F401
 
 # used in more than one check
 start_conditional = ["ifdef", "ifeq", "ifndef", "ifneq"]
+continue_conditional = ["elif", "else"]
 end_conditional = ["endif"]
+
+
+class DoNotInstallToHostdirUsr(_CheckFunction):
+    INSTALL_TO_HOSTDIR_USR = re.compile(r"^[^#].*\$\(HOST_DIR\)/usr")
+
+    def check_line(self, lineno, text):
+        if self.INSTALL_TO_HOSTDIR_USR.match(text.rstrip()):
+            return ["{}:{}: install files to $(HOST_DIR)/ instead of $(HOST_DIR)/usr/"
+                    .format(self.filename, lineno),
+                    text]
+
+
+class Ifdef(_CheckFunction):
+    IFDEF = re.compile(r"^\s*(else\s+|)(ifdef|ifndef)\s")
+
+    def check_line(self, lineno, text):
+        m = self.IFDEF.search(text)
+        if m is None:
+            return
+        word = m.group(2)
+        if word == 'ifdef':
+            return ["{}:{}: use ifeq ($(SYMBOL),y) instead of ifdef SYMBOL"
+                    .format(self.filename, lineno),
+                    text]
+        else:
+            return ["{}:{}: use ifneq ($(SYMBOL),y) instead of ifndef SYMBOL"
+                    .format(self.filename, lineno),
+                    text]
 
 
 class Indent(_CheckFunction):
     COMMENT = re.compile(r"^\s*#")
-    CONDITIONAL = re.compile(r"^\s*({})\s".format("|".join(start_conditional + end_conditional)))
+    CONDITIONAL = re.compile(r"^\s*({})\s".format("|".join(start_conditional + end_conditional + continue_conditional)))
     ENDS_WITH_BACKSLASH = re.compile(r"^[^#].*\\$")
     END_DEFINE = re.compile(r"^\s*endef\s")
     MAKEFILE_TARGET = re.compile(r"^[^# \t]+:\s")
@@ -43,7 +73,7 @@ class Indent(_CheckFunction):
         expect_tabs = False
         if self.define or self.backslash or self.makefile_target:
             expect_tabs = True
-        if self.CONDITIONAL.search(text):
+        if not self.backslash and self.CONDITIONAL.search(text):
             expect_tabs = False
 
         # calculate for next line
@@ -76,7 +106,7 @@ class Indent(_CheckFunction):
 
 
 class OverriddenVariable(_CheckFunction):
-    CONCATENATING = re.compile(r"^([A-Z0-9_]+)\s*(\+|:|)=\s*\$\(\\1\)")
+    CONCATENATING = re.compile(r"^([A-Z0-9_]+)\s*(\+|:|)=\s*\$\(\1\)")
     END_CONDITIONAL = re.compile(r"^\s*({})".format("|".join(end_conditional)))
     OVERRIDING_ASSIGNMENTS = [':=', "="]
     START_CONDITIONAL = re.compile(r"^\s*({})".format("|".join(start_conditional)))
@@ -87,6 +117,9 @@ class OverriddenVariable(_CheckFunction):
         r"_SITE\s*=\s*",
         r"_SOURCE\s*=\s*",
         r"_VERSION\s*=\s*"])))
+    FORBIDDEN_OVERRIDDEN = re.compile(r"^[A-Z0-9_]+({})".format("|".join([
+        r"_CONF_OPTS\s*=\s*",
+        r"_DEPENDENCIES\s*=\s*"])))
 
     def before(self):
         self.conditional = 0
@@ -122,6 +155,10 @@ class OverriddenVariable(_CheckFunction):
                         .format(self.filename, lineno, variable),
                         text]
         else:
+            if self.FORBIDDEN_OVERRIDDEN.search(text):
+                return ["{}:{}: conditional override of variable {}"
+                        .format(self.filename, lineno, variable),
+                        text]
             if variable not in self.unconditionally_set:
                 self.conditionally_set.append(variable)
                 return
@@ -229,6 +266,7 @@ class TypoInPackageVariable(_CheckFunction):
         "BR_CCACHE_INITIAL_SETUP",
         "BR_LIBC",
         "BR_NO_CHECK_HASH_FOR",
+        "GCC_TARGET",
         "LINUX_EXTENSIONS",
         "LINUX_POST_PATCH_HOOKS",
         "LINUX_TOOLS",
@@ -241,7 +279,7 @@ class TypoInPackageVariable(_CheckFunction):
         "TARGET_FINALIZE_HOOKS",
         "TARGETS_ROOTFS",
         "XTENSA_CORE_NAME"]))
-    VARIABLE = re.compile(r"^([A-Z0-9_]+_[A-Z0-9_]+)\s*(\+|)=")
+    VARIABLE = re.compile(r"^(define\s+)?([A-Z0-9_]+_[A-Z0-9_]+)")
 
     def before(self):
         package, _ = os.path.splitext(os.path.basename(self.filename))
@@ -251,7 +289,7 @@ class TypoInPackageVariable(_CheckFunction):
         # linux extensions do not use LINUX_EXT_ prefix for variables
         package = package.replace("LINUX_EXT_", "")
         self.package = package
-        self.REGEX = re.compile(r"^(HOST_|ROOTFS_)?({}_[A-Z0-9_]+)".format(package))
+        self.REGEX = re.compile(r"(HOST_|ROOTFS_)?({}_[A-Z0-9_]+)".format(package))
         self.FIND_VIRTUAL = re.compile(
             r"^{}_PROVIDES\s*(\+|)=\s*(.*)".format(package))
         self.virtual = []
@@ -261,7 +299,7 @@ class TypoInPackageVariable(_CheckFunction):
         if m is None:
             return
 
-        variable = m.group(1)
+        variable = m.group(2)
 
         # allow to set variables for virtual package this package provides
         v = self.FIND_VIRTUAL.search(text)
@@ -328,3 +366,76 @@ class VariableWithBraces(_CheckFunction):
             return ["{}:{}: use $() to delimit variables, not ${{}}"
                     .format(self.filename, lineno),
                     text]
+
+
+class CPEVariables(_CheckFunction):
+    """
+    Check that the values for the CPE variables are not the default.
+      - CPE_ID_* variables must not be set to their default
+      - CPE_ID_VALID must not be set if a non-default CPE_ID variable is set
+    """
+    def before(self):
+        pkg, _ = os.path.splitext(os.path.basename(self.filename))
+        self.CPE_fields_defaults = {
+            "VALID": "NO",
+            "PREFIX": "cpe:2.3:a",
+            "VENDOR": f"{pkg}_project",
+            "PRODUCT": pkg,
+            "VERSION": None,
+            "UPDATE": "*",
+        }
+        self.valid = None
+        self.non_defaults = 0
+        self.CPE_FIELDS_RE = re.compile(
+            r"^\s*(.+_CPE_ID_({}))\s*=\s*(.+)$"
+            .format("|".join(self.CPE_fields_defaults)),
+        )
+        self.VERSION_RE = re.compile(
+            rf"^(HOST_)?{pkg.upper().replace('-', '_')}_VERSION\s*=\s*(.+)$",
+        )
+        self.COMMENT_RE = re.compile(r"^\s*#.*")
+
+    def check_line(self, lineno, text):
+        text = self.COMMENT_RE.sub('', text.rstrip())
+
+        # WARNING! The VERSION_RE can _also_ match the same lines as CPE_FIELDS_RE,
+        # but not the other way around. So we must first check for CPE_FIELDS_RE,
+        # and if not matched, then and only then check for VERSION_RE.
+        match = self.CPE_FIELDS_RE.match(text)
+        if match:
+            var, field, val = match.groups()
+            return self._check_field(lineno, text, field, var, val)
+
+        match = self.VERSION_RE.match(text)
+        if match:
+            self.CPE_fields_defaults["VERSION"] = match.groups()[1]
+
+    def after(self):
+        # "VALID" counts in the non-defaults; so when "VALID" is present,
+        # 1 non-default means only "VALID" is present, so that's OK.
+        if self.valid and self.non_defaults > 1:
+            return ["{}:{}: 'YES' is implied when a non-default CPE_ID field is specified: {} ({}#cpe-id)".format(
+                        self.filename,
+                        self.valid["lineno"],
+                        self.valid["text"],
+                        self.url_to_manual,
+            )]
+
+    def _check_field(self, lineno, text, field, var, val):
+        if field == "VERSION" and self.CPE_fields_defaults[field] is None:
+            return ["{}:{}: expecting package version to be set before CPE_ID_VERSION".format(
+                self.filename,
+                lineno,
+            )]
+        if val == self.CPE_fields_defaults[field]:
+            return ["{}:{}: '{}' is the default value for {} ({}#cpe-id)".format(
+                self.filename,
+                lineno,
+                val,
+                var,
+                self.url_to_manual,
+            )]
+        else:
+            if field == "VALID":
+                self.valid = {"lineno": lineno, "text": text}
+            self.non_defaults += 1

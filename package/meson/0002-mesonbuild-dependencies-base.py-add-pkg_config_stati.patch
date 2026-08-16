@@ -1,4 +1,4 @@
-From 8622d37587169c1e4a4206a9462868ede057f0e8 Mon Sep 17 00:00:00 2001
+From 59934e2116e025ecfe23baf6febc4a0eb85f60cd Mon Sep 17 00:00:00 2001
 From: Fabrice Fontaine <fontaine.fabrice@gmail.com>
 Date: Sat, 15 Feb 2020 15:13:59 +0100
 Subject: [PATCH] mesonbuild/dependencies/base.py: add pkg_config_static
@@ -18,24 +18,28 @@ Fixes:
 Signed-off-by: Fabrice Fontaine <fontaine.fabrice@gmail.com>
 [Romain: Fix if condition, pkg_config_static is a string not a boolean]
 Signed-off-by: Romain Naour <romain.naour@gmail.com>
+[Rebased on 0.57.1]
+Signed-off-by: Peter Seiderer <ps.report@gmx.net>
+[rebased on 1.3.0]
+Signed-off-by: Antoine Coutant <antoine.coutant@smile.fr>
 ---
- mesonbuild/dependencies/base.py | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ mesonbuild/dependencies/pkgconfig.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/mesonbuild/dependencies/base.py b/mesonbuild/dependencies/base.py
-index 23701da95..83e51626d 100644
---- a/mesonbuild/dependencies/base.py
-+++ b/mesonbuild/dependencies/base.py
-@@ -849,7 +849,8 @@ class PkgConfigDependency(ExternalDependency):
-     def _set_libs(self):
-         env = None
-         libcmd = [self.name, '--libs']
--        if self.static:
-+        if self.static or \
-+           (self.env.properties[self.for_machine].get('pkg_config_static', None) == 'true'):
-             libcmd.append('--static')
-         # Force pkg-config to output -L fields even if they are system
-         # paths so we can do manual searching with cc.find_library() later.
--- 
+diff --git a/mesonbuild/dependencies/pkgconfig.py b/mesonbuild/dependencies/pkgconfig.py
+index e86206b88..94888657d 100644
+--- a/mesonbuild/dependencies/pkgconfig.py
++++ b/mesonbuild/dependencies/pkgconfig.py
+@@ -169,7 +169,8 @@ class PkgConfigCLI(PkgConfigInterface):
+             env['PKG_CONFIG_ALLOW_SYSTEM_LIBS'] = '1'
+         args: T.List[str] = []
+         args += self._define_variable_args(define_variable)
+-        if static:
++        if static or \
++            (self.env.properties[self.for_machine].get('pkg_config_static', None) == 'true'):
+             args.append('--static')
+         args += ['--libs', name]
+         ret, out, err = self._call_pkgbin(args, env=env)
+--
 2.25.1
 

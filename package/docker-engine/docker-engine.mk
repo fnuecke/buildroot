@@ -4,38 +4,38 @@
 #
 ################################################################################
 
-DOCKER_ENGINE_VERSION = 19.03.13
+DOCKER_ENGINE_VERSION = 26.0.2
 DOCKER_ENGINE_SITE = $(call github,moby,moby,v$(DOCKER_ENGINE_VERSION))
 
 DOCKER_ENGINE_LICENSE = Apache-2.0
 DOCKER_ENGINE_LICENSE_FILES = LICENSE
 
-DOCKER_ENGINE_DEPENDENCIES = host-pkgconf
+DOCKER_ENGINE_DEPENDENCIES = host-pkgconf libseccomp
 DOCKER_ENGINE_GOMOD = github.com/docker/docker
 
+DOCKER_ENGINE_CPE_ID_VENDOR = docker
+DOCKER_ENGINE_CPE_ID_PRODUCT = docker
+
 DOCKER_ENGINE_LDFLAGS = \
-	-X main.GitCommit=$(DOCKER_ENGINE_VERSION) \
-	-X main.Version=$(DOCKER_ENGINE_VERSION)
+	-X $(DOCKER_ENGINE_GOMOD)/dockerversion.BuildTime="" \
+	-X $(DOCKER_ENGINE_GOMOD)/dockerversion.GitCommit="buildroot" \
+	-X $(DOCKER_ENGINE_GOMOD)/dockerversion.IAmStatic="false" \
+	-X $(DOCKER_ENGINE_GOMOD)/dockerversion.InitCommitID="" \
+	-X $(DOCKER_ENGINE_GOMOD)/dockerversion.Version="$(DOCKER_ENGINE_VERSION)"
 
-DOCKER_ENGINE_TAGS = cgo exclude_graphdriver_zfs autogen
-DOCKER_ENGINE_BUILD_TARGETS = cmd/dockerd
+DOCKER_ENGINE_TAGS = cgo exclude_graphdriver_zfs
+DOCKER_ENGINE_BUILD_TARGETS = cmd/dockerd cmd/docker-proxy
 
-ifeq ($(BR2_PACKAGE_LIBSECCOMP),y)
-DOCKER_ENGINE_TAGS += seccomp
-DOCKER_ENGINE_DEPENDENCIES += libseccomp
+ifeq ($(BR2_PACKAGE_LIBAPPARMOR),y)
+DOCKER_ENGINE_DEPENDENCIES += libapparmor
 endif
 
 ifeq ($(BR2_INIT_SYSTEMD),y)
 DOCKER_ENGINE_DEPENDENCIES += systemd
 DOCKER_ENGINE_TAGS += systemd journald
 endif
-ifeq ($(BR2_PACKAGE_DOCKER_ENGINE_EXPERIMENTAL),y)
-DOCKER_ENGINE_TAGS += experimental
-endif
 
-ifeq ($(BR2_PACKAGE_DOCKER_ENGINE_DRIVER_BTRFS),y)
-DOCKER_ENGINE_DEPENDENCIES += btrfs-progs
-else
+ifneq ($(BR2_PACKAGE_DOCKER_ENGINE_DRIVER_BTRFS),y)
 DOCKER_ENGINE_TAGS += exclude_graphdriver_btrfs
 endif
 
@@ -51,17 +51,16 @@ else
 DOCKER_ENGINE_TAGS += exclude_graphdriver_vfs
 endif
 
-DOCKER_ENGINE_INSTALL_BINS = $(notdir $(DOCKER_ENGINE_BUILD_TARGETS))
-
-define DOCKER_ENGINE_RUN_AUTOGEN
-	cd $(@D) && \
-		BUILDTIME="$$(date)" \
-		VERSION="$(patsubst v%,%,$(DOCKER_ENGINE_VERSION))" \
-		PKG_CONFIG="$(PKG_CONFIG_HOST_BINARY)" $(TARGET_MAKE_ENV) \
-		bash ./hack/make/.go-autogen
+# create the go.mod file with language version go1.19
+# remove the conflicting vendor/modules.txt
+# https://github.com/moby/moby/issues/44618#issuecomment-1343565705
+define DOCKER_ENGINE_FIX_VENDORING
+	printf "module $(DOCKER_ENGINE_GOMOD)\n\ngo 1.19\n" > $(@D)/go.mod
+	rm -f $(@D)/vendor/modules.txt
 endef
+DOCKER_ENGINE_POST_EXTRACT_HOOKS += DOCKER_ENGINE_FIX_VENDORING
 
-DOCKER_ENGINE_POST_CONFIGURE_HOOKS += DOCKER_ENGINE_RUN_AUTOGEN
+DOCKER_ENGINE_INSTALL_BINS = $(notdir $(DOCKER_ENGINE_BUILD_TARGETS))
 
 define DOCKER_ENGINE_INSTALL_INIT_SYSTEMD
 	$(INSTALL) -D -m 0644 $(@D)/contrib/init/systemd/docker.service \
@@ -123,10 +122,6 @@ define DOCKER_ENGINE_LINUX_CONFIG_FIXUPS
 	$(call KCONFIG_ENABLE_OPT,CONFIG_IP_NF_TARGET_MASQUERADE)
 	$(call KCONFIG_ENABLE_OPT,CONFIG_BRIDGE)
 	$(call KCONFIG_ENABLE_OPT,CONFIG_NET_CORE)
-	$(call KCONFIG_ENABLE_OPT,CONFIG_DUMMY)
-	$(call KCONFIG_ENABLE_OPT,CONFIG_MACVLAN)
-	$(call KCONFIG_ENABLE_OPT,CONFIG_IPVLAN)
-	$(call KCONFIG_ENABLE_OPT,CONFIG_VXLAN)
 	$(call KCONFIG_ENABLE_OPT,CONFIG_VETH)
 	$(call KCONFIG_ENABLE_OPT,CONFIG_OVERLAY_FS)
 	$(call KCONFIG_ENABLE_OPT,CONFIG_KEYS)

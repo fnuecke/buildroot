@@ -4,11 +4,12 @@
 #
 ################################################################################
 
-E2FSPROGS_VERSION = 1.45.6
+E2FSPROGS_VERSION = 1.47.0
 E2FSPROGS_SOURCE = e2fsprogs-$(E2FSPROGS_VERSION).tar.xz
 E2FSPROGS_SITE = $(BR2_KERNEL_MIRROR)/linux/kernel/people/tytso/e2fsprogs/v$(E2FSPROGS_VERSION)
 E2FSPROGS_LICENSE = GPL-2.0, MIT-like with advertising clause (libss and libet)
 E2FSPROGS_LICENSE_FILES = NOTICE lib/ss/mit-sipb-copyright.h lib/et/internal.h
+E2FSPROGS_CPE_ID_VALID = YES
 E2FSPROGS_INSTALL_STAGING = YES
 
 # Use libblkid and libuuid from util-linux for host and target packages.
@@ -26,6 +27,7 @@ HOST_E2FSPROGS_CONF_OPTS = \
 	--disable-defrag \
 	--disable-e2initrd-helper \
 	--disable-fuse2fs \
+	--disable-fsck \
 	--disable-libblkid \
 	--disable-libuuid \
 	--disable-testio-debug \
@@ -65,6 +67,11 @@ ifeq ($(BR2_nios2),y)
 E2FSPROGS_CONF_ENV += ac_cv_func_fallocate=no
 endif
 
+# workaround gcc bug 111001
+ifeq ($(BR2_TOOLCHAIN_HAS_GCC_BUG_111001),y)
+E2FSPROGS_CONF_ENV += CFLAGS="$(TARGET_CFLAGS) -Os"
+endif
+
 E2FSPROGS_CONF_ENV += ac_cv_path_LDCONFIG=true
 
 HOST_E2FSPROGS_CONF_ENV += ac_cv_path_LDCONFIG=true
@@ -73,10 +80,26 @@ E2FSPROGS_INSTALL_STAGING_OPTS = \
 	DESTDIR=$(STAGING_DIR) \
 	install-libs
 
+# e2scrub has no associated --enable/disable option
+ifneq ($(BR2_PACKAGE_E2FSPROGS_E2SCRUB),y)
+E2FSPROGS_MAKE_OPTS += E2SCRUB_DIR=
+endif
+
+E2FSPROGS_INSTALL_TARGET_OPTS = \
+	$(E2FSPROGS_MAKE_OPTS) \
+	DESTDIR=$(TARGET_DIR) \
+	install
+
 # Package does not build in parallel due to improper make rules
 define HOST_E2FSPROGS_INSTALL_CMDS
 	$(HOST_MAKE_ENV) $(MAKE1) -C $(@D) install install-libs
 endef
+
+# Remove compile_et which raises a build failure with samba4
+define HOST_E2FSPROGS_REMOVE_COMPILE_ET
+	$(RM) $(HOST_DIR)/bin/compile_et
+endef
+HOST_E2FSPROGS_POST_INSTALL_HOOKS += HOST_E2FSPROGS_REMOVE_COMPILE_ET
 
 $(eval $(autotools-package))
 $(eval $(host-autotools-package))

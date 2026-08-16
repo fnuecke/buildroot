@@ -4,21 +4,12 @@
 #
 ################################################################################
 
-PURE_FTPD_VERSION = 1.0.49
+PURE_FTPD_VERSION = 1.0.51
 PURE_FTPD_SITE = https://download.pureftpd.org/pub/pure-ftpd/releases
 PURE_FTPD_SOURCE = pure-ftpd-$(PURE_FTPD_VERSION).tar.bz2
 PURE_FTPD_LICENSE = ISC
 PURE_FTPD_LICENSE_FILES = COPYING
-PURE_FTPD_DEPENDENCIES = $(if $(BR2_PACKAGE_LIBICONV),libiconv)
-
-# 0001-listdir-reuse-a-single-buffer-to-store-every-file-name-to-display.patch
-PURE_FTPD_IGNORE_CVES += CVE-2019-20176
-
-# 0002-pure_strcmp-len-s2-can-be-len-s1.patch
-PURE_FTPD_IGNORE_CVES += CVE-2020-9365
-
-# 0003-diraliases-always-set-the-tail-of-the-list-to-NULL.patch
-PURE_FTPD_IGNORE_CVES += CVE-2020-9274
+PURE_FTPD_CPE_ID_VENDOR = pureftpd
 
 PURE_FTPD_CONF_OPTS = \
 	--with-altlog \
@@ -39,9 +30,9 @@ ifeq ($(BR2_PACKAGE_LIBSODIUM),y)
 PURE_FTPD_DEPENDENCIES += libsodium
 endif
 
-ifeq ($(BR2_PACKAGE_MYSQL),y)
+ifeq ($(BR2_PACKAGE_MARIADB),y)
 PURE_FTPD_CONF_OPTS += --with-mysql=$(STAGING_DIR)/usr
-PURE_FTPD_DEPENDENCIES += mysql
+PURE_FTPD_DEPENDENCIES += mariadb
 else
 PURE_FTPD_CONF_OPTS += --without-mysql
 endif

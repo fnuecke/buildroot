@@ -7,38 +7,22 @@ BOARD_NAME="$(basename ${BOARD_DIR})"
 GENIMAGE_CFG="${BOARD_DIR}/genimage-${BOARD_NAME}.cfg"
 GENIMAGE_TMP="${BUILD_DIR}/genimage.tmp"
 
-for arg in "$@"
-do
-	case "${arg}" in
-		--add-miniuart-bt-overlay)
-		if ! grep -qE '^dtoverlay=' "${BINARIES_DIR}/rpi-firmware/config.txt"; then
-			echo "Adding 'dtoverlay=miniuart-bt' to config.txt (fixes ttyAMA0 serial console)."
-			cat << __EOF__ >> "${BINARIES_DIR}/rpi-firmware/config.txt"
+# generate genimage from template if a board specific variant doesn't exists
+if [ ! -e "${GENIMAGE_CFG}" ]; then
+	GENIMAGE_CFG="${BINARIES_DIR}/genimage.cfg"
+	FILES=()
 
-# fixes rpi (3B, 3B+, 3A+, 4B and Zero W) ttyAMA0 serial console
-dtoverlay=miniuart-bt
-__EOF__
-		fi
-		;;
-		--aarch64)
-		# Run a 64bits kernel (armv8)
-		sed -e '/^kernel=/s,=.*,=Image,' -i "${BINARIES_DIR}/rpi-firmware/config.txt"
-		if ! grep -qE '^arm_64bit=1' "${BINARIES_DIR}/rpi-firmware/config.txt"; then
-			cat << __EOF__ >> "${BINARIES_DIR}/rpi-firmware/config.txt"
+	for i in "${BINARIES_DIR}"/*.dtb "${BINARIES_DIR}"/rpi-firmware/*; do
+		FILES+=( "${i#${BINARIES_DIR}/}" )
+	done
 
-# enable 64bits support
-arm_64bit=1
-__EOF__
-		fi
-		;;
-		--gpu_mem_256=*|--gpu_mem_512=*|--gpu_mem_1024=*)
-		# Set GPU memory
-		gpu_mem="${arg:2}"
-		sed -e "/^${gpu_mem%=*}=/s,=.*,=${gpu_mem##*=}," -i "${BINARIES_DIR}/rpi-firmware/config.txt"
-		;;
-	esac
+	KERNEL=$(sed -n 's/^kernel=//p' "${BINARIES_DIR}/rpi-firmware/config.txt")
+	FILES+=( "${KERNEL}" )
 
-done
+	BOOT_FILES=$(printf '\\t\\t\\t"%s",\\n' "${FILES[@]}")
+	sed "s|#BOOT_FILES#|${BOOT_FILES}|" "${BOARD_DIR}/genimage.cfg.in" \
+		> "${GENIMAGE_CFG}"
+fi
 
 # Pass an empty rootpath. genimage makes a full copy of the given rootpath to
 # ${GENIMAGE_TMP}/root so passing TARGET_DIR would be a waste of time and disk

@@ -9,6 +9,7 @@ class TestTmux(infra.basetest.BRTest):
         BR2_PACKAGE_TMUX=y
         BR2_TARGET_ROOTFS_CPIO=y
         # BR2_TARGET_ROOTFS_TAR is not set
+        BR2_GENERATE_LOCALE="C.UTF-8"
         """
 
     def test_run(self):
@@ -19,20 +20,16 @@ class TestTmux(infra.basetest.BRTest):
         self.emulator.login()
 
         cmd = "tmux -V"
-        _, exit_code = self.emulator.run(cmd)
-        self.assertEqual(exit_code, 0)
+        self.assertRunOk(cmd)
 
         cmd = "tmux -C </dev/null"
-        _, exit_code = self.emulator.run(cmd)
-        self.assertEqual(exit_code, 0)
+        self.assertRunOk(cmd)
 
         cmd = "tmux split"
-        _, exit_code = self.emulator.run(cmd)
-        self.assertEqual(exit_code, 0)
+        self.assertRunOk(cmd)
 
         cmd = "tmux new-window"
-        _, exit_code = self.emulator.run(cmd)
-        self.assertEqual(exit_code, 0)
+        self.assertRunOk(cmd)
 
         cmd = "tmux list-windows"
         output, exit_code = self.emulator.run(cmd)

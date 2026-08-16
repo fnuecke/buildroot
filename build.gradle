@@ -29,7 +29,7 @@ import org.apache.tools.ant.taskdefs.condition.Os
 
 import java.nio.file.Files
 
-final def buildrootDockerImage = (project.findProperty("buildrootDockerImage") ?: "buildroot/base:20200814.2228").toString()
+final def buildrootDockerImage = (project.findProperty("buildrootDockerImage") ?: "registry.gitlab.com/buildroot.org/buildroot/base:20230207.1123").toString()
 final def buildrootDockerHome = file("output/.docker-home")
 
 final def findExecutable = { final String name ->

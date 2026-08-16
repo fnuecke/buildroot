@@ -16,6 +16,8 @@ else
 XENOMAI_SOURCE = xenomai-$(XENOMAI_VERSION).tar.bz2
 XENOMAI_SITE = http://xenomai.org/downloads/xenomai/stable
 endif
+# We're patching configure.ac
+XENOMAI_AUTORECONF = YES
 
 # Exclude all from the hash check, but the latest version.
 ifeq ($(BR2_PACKAGE_XENOMAI)$(BR2_PACKAGE_XENOMAI_LATEST_VERSION),y)
@@ -37,7 +39,9 @@ XENOMAI_INSTALL_STAGING = YES
 XENOMAI_INSTALL_TARGET_OPTS = DESTDIR=$(TARGET_DIR) install-user
 XENOMAI_INSTALL_STAGING_OPTS = DESTDIR=$(STAGING_DIR) install-user
 
-XENOMAI_CONF_OPTS += --includedir=/usr/include/xenomai/ --disable-doc-install
+XENOMAI_CONF_OPTS += \
+	--disable-demo \
+	--includedir=/usr/include/xenomai/
 
 ifeq ($(BR2_PACKAGE_XENOMAI_MERCURY),y)
 XENOMAI_CONF_OPTS += --with-core=mercury
@@ -82,17 +86,10 @@ endef
 
 XENOMAI_POST_INSTALL_TARGET_HOOKS += XENOMAI_REMOVE_UNNEEDED_FILES
 
-ifeq ($(BR2_PACKAGE_XENOMAI_TESTSUITE),)
-define XENOMAI_REMOVE_TESTSUITE
-	rm -rf $(TARGET_DIR)/usr/share/xenomai/
-	for i in clocktest gpiotest latency smokey spitest switchtest \
-		xeno-test-run-wrapper dohell xeno-test-run xeno-test ; do \
-		rm -f $(TARGET_DIR)/usr/bin/$$i ; \
-	done
-	rm -rf $(TARGET_DIR)/usr/demo/
-endef
-
-XENOMAI_POST_INSTALL_TARGET_HOOKS += XENOMAI_REMOVE_TESTSUITE
+ifeq ($(BR2_PACKAGE_XENOMAI_TESTSUITE),y)
+XENOMAI_CONF_OPTS += --enable-testsuite
+else
+XENOMAI_CONF_OPTS += --disable-testsuite
 endif
 
 ifeq ($(BR2_PACKAGE_XENOMAI_RTCAN),)

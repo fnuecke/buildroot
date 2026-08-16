@@ -4,11 +4,13 @@
 #
 ################################################################################
 
-PYTHON_SIMPLEJSON_VERSION = 3.17.0
+PYTHON_SIMPLEJSON_VERSION = 3.19.2
 PYTHON_SIMPLEJSON_SOURCE = simplejson-$(PYTHON_SIMPLEJSON_VERSION).tar.gz
-PYTHON_SIMPLEJSON_SITE = https://files.pythonhosted.org/packages/98/87/a7b98aa9256c8843f92878966dc3d8d914c14aad97e2c5ce4798d5743e07
+PYTHON_SIMPLEJSON_SITE = https://files.pythonhosted.org/packages/79/79/3ccb95bb4154952532f280f7a41979fbfb0fbbaee4d609810ecb01650afa
 PYTHON_SIMPLEJSON_LICENSE = Academic Free License (AFL), MIT
 PYTHON_SIMPLEJSON_LICENSE_FILES = LICENSE.txt
+PYTHON_SIMPLEJSON_CPE_ID_VENDOR = simplejson_project
+PYTHON_SIMPLEJSON_CPE_ID_PRODUCT = simplejson
 PYTHON_SIMPLEJSON_SETUP_TYPE = setuptools
 
 $(eval $(python-package))

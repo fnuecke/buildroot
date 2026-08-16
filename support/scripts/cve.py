@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright (C) 2009 by Thomas Petazzoni <thomas.petazzoni@free-electrons.com>
 # Copyright (C) 2020 by Gregory CLEMENT <gregory.clement@bootlin.com>
@@ -19,24 +19,16 @@
 
 import datetime
 import os
-import requests  # URL checking
 import distutils.version
-import time
-import gzip
+import json
+import subprocess
 import sys
 import operator
 
-try:
-    import ijson
-except ImportError:
-    sys.stderr.write("You need ijson to parse NVD for CVE check\n")
-    exit(1)
-
 sys.path.append('utils/')
 
-NVD_START_YEAR = 2002
-NVD_JSON_VERSION = "1.1"
-NVD_BASE_URL = "https://nvd.nist.gov/feeds/json/cve/" + NVD_JSON_VERSION
+NVD_START_YEAR = 1999
+NVD_BASE_URL = "https://github.com/fkie-cad/nvd-json-data-feeds/"
 
 ops = {
     '>=': operator.ge,
@@ -45,6 +37,24 @@ ops = {
     '<': operator.lt,
     '=': operator.eq
 }
+
+
+# Check if two CPE IDs match each other
+def cpe_matches(cpe1, cpe2):
+    cpe1_elems = cpe1.split(":")
+    cpe2_elems = cpe2.split(":")
+
+    remains = filter(lambda x: x[0] not in ["*", "-"] and x[1] not in ["*", "-"] and x[0] != x[1],
+                     zip(cpe1_elems, cpe2_elems))
+    return len(list(remains)) == 0
+
+
+def cpe_product(cpe):
+    return cpe.split(':')[4]
+
+
+def cpe_version(cpe):
+    return cpe.split(':')[5]
 
 
 class CVE:
@@ -58,41 +68,31 @@ class CVE:
         self.nvd_cve = nvd_cve
 
     @staticmethod
-    def download_nvd_year(nvd_path, year):
-        metaf = "nvdcve-%s-%s.meta" % (NVD_JSON_VERSION, year)
-        path_metaf = os.path.join(nvd_path, metaf)
-        jsonf_gz = "nvdcve-%s-%s.json.gz" % (NVD_JSON_VERSION, year)
-        path_jsonf_gz = os.path.join(nvd_path, jsonf_gz)
+    def download_nvd(nvd_git_dir):
+        print(f"Updating from {NVD_BASE_URL}")
+        if os.path.exists(nvd_git_dir):
+            subprocess.check_call(
+                ["git", "pull"],
+                cwd=nvd_git_dir,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        else:
+            # Create the directory and its parents; git
+            # happily clones into an empty directory.
+            os.makedirs(nvd_git_dir)
+            subprocess.check_call(
+                ["git", "clone", NVD_BASE_URL, nvd_git_dir],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
 
-        # If the database file is less than a day old, we assume the NVD data
-        # locally available is recent enough.
-        if os.path.exists(path_jsonf_gz) and os.stat(path_jsonf_gz).st_mtime >= time.time() - 86400:
-            return path_jsonf_gz
-
-        # If not, we download the meta file
-        url = "%s/%s" % (NVD_BASE_URL, metaf)
-        print("Getting %s" % url)
-        page_meta = requests.get(url)
-        page_meta.raise_for_status()
-
-        # If the meta file already existed, we compare the existing
-        # one with the data newly downloaded. If they are different,
-        # we need to re-download the database.
-        # If the database does not exist locally, we need to redownload it in
-        # any case.
-        if os.path.exists(path_metaf) and os.path.exists(path_jsonf_gz):
-            meta_known = open(path_metaf, "r").read()
-            if page_meta.text == meta_known:
-                return path_jsonf_gz
-
-        # Grab the compressed JSON NVD, and write files to disk
-        url = "%s/%s" % (NVD_BASE_URL, jsonf_gz)
-        print("Getting %s" % url)
-        page_json = requests.get(url)
-        page_json.raise_for_status()
-        open(path_jsonf_gz, "wb").write(page_json.content)
-        open(path_metaf, "w").write(page_meta.text)
-        return path_jsonf_gz
+    @staticmethod
+    def sort_id(cve_ids):
+        def cve_key(cve_id):
+            year, id_ = cve_id.split('-')[1:]
+            return (int(year), int(id_))
+        return sorted(cve_ids, key=cve_key)
 
     @classmethod
     def read_nvd_dir(cls, nvd_dir):
@@ -101,15 +101,15 @@ class CVE:
         feeds since NVD_START_YEAR. If the files are missing or outdated in
         nvd_dir, a fresh copy will be downloaded, and kept in .json.gz
         """
+        nvd_git_dir = os.path.join(nvd_dir, "git")
+        CVE.download_nvd(nvd_git_dir)
         for year in range(NVD_START_YEAR, datetime.datetime.now().year + 1):
-            filename = CVE.download_nvd_year(nvd_dir, year)
-            try:
-                content = ijson.items(gzip.GzipFile(filename), 'CVE_Items.item')
-            except:  # noqa: E722
-                print("ERROR: cannot read %s. Please remove the file then rerun this script" % filename)
-                raise
-            for cve in content:
-                yield cls(cve)
+            for dirpath, _, filenames in os.walk(os.path.join(nvd_git_dir, f"CVE-{year}")):
+                for filename in filenames:
+                    if filename[-5:] != ".json":
+                        continue
+                    with open(os.path.join(dirpath, filename), "rb") as f:
+                        yield cls(json.load(f))
 
     def each_product(self):
         """Iterate over each product section of this cve"""
@@ -131,10 +131,14 @@ class CVE:
             for parsed_node in self.parse_node(child):
                 yield parsed_node
 
-        for cpe in node.get('cpe_match', ()):
+        for cpe in node.get('cpeMatch', ()):
             if not cpe['vulnerable']:
                 return
-            vendor, product, version = cpe['cpe23Uri'].split(':')[3:6]
+            product = cpe_product(cpe['criteria'])
+            version = cpe_version(cpe['criteria'])
+            # ignore when product is '-', which means N/A
+            if product == '-':
+                return
             op_start = ''
             op_end = ''
             v_start = ''
@@ -142,10 +146,6 @@ class CVE:
 
             if version != '*' and version != '-':
                 # Version is defined, this is a '=' match
-                op_start = '='
-                v_start = version
-            elif version == '-':
-                # no version information is available
                 op_start = '='
                 v_start = version
             else:
@@ -167,8 +167,7 @@ class CVE:
                     v_end = cpe['versionEndExcluding']
 
             yield {
-                'vendor': vendor,
-                'product': product,
+                'id': cpe['criteria'],
                 'v_start': v_start,
                 'op_start': op_start,
                 'v_end': v_end,
@@ -176,21 +175,22 @@ class CVE:
             }
 
     def each_cpe(self):
-        for node in self.nvd_cve['configurations']['nodes']:
-            for cpe in self.parse_node(node):
-                yield cpe
+        for nodes in self.nvd_cve.get('configurations', []):
+            for node in nodes['nodes']:
+                for cpe in self.parse_node(node):
+                    yield cpe
 
     @property
     def identifier(self):
         """The CVE unique identifier"""
-        return self.nvd_cve['cve']['CVE_data_meta']['ID']
+        return self.nvd_cve['id']
 
     @property
-    def pkg_names(self):
-        """The set of package names referred by this CVE definition"""
-        return set(p['product'] for p in self.each_cpe())
+    def affected_products(self):
+        """The set of CPE products referred by this CVE definition"""
+        return set(cpe_product(p['id']) for p in self.each_cpe())
 
-    def affects(self, name, version, cve_ignore_list):
+    def affects(self, name, version, cve_ignore_list, cpeid=None):
         """
         True if the Buildroot Package object passed as argument is affected
         by this CVE.
@@ -203,14 +203,20 @@ class CVE:
             print("Cannot parse package '%s' version '%s'" % (name, version))
             pkg_version = None
 
+        # if we don't have a cpeid, build one based on name and version
+        if not cpeid:
+            cpeid = "cpe:2.3:*:*:%s:%s:*:*:*:*:*:*:*" % (name, version)
+        # if we have a cpeid, use its version instead of the package
+        # version, as they might be different due to
+        # <pkg>_CPE_ID_VERSION
+        else:
+            pkg_version = distutils.version.LooseVersion(cpe_version(cpeid))
+
         for cpe in self.each_cpe():
-            if cpe['product'] != name:
+            if not cpe_matches(cpe['id'], cpeid):
                 continue
-            if cpe['v_start'] == '-':
-                return self.CVE_AFFECTS
             if not cpe['v_start'] and not cpe['v_end']:
-                print("No CVE affected version")
-                continue
+                return self.CVE_AFFECTS
             if not pkg_version:
                 continue
 

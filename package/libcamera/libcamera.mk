@@ -5,17 +5,21 @@
 ################################################################################
 
 LIBCAMERA_SITE = https://git.linuxtv.org/libcamera.git
-LIBCAMERA_VERSION = e59713c68678f3eb6b6ebe97cabdc88c7042567f
+LIBCAMERA_VERSION = v0.2.0
 LIBCAMERA_SITE_METHOD = git
 LIBCAMERA_DEPENDENCIES = \
 	host-openssl \
 	host-pkgconf \
-	host-python3-pyyaml \
+	host-python-jinja2 \
+	host-python-ply \
+	host-python-pyyaml \
+	libyaml \
 	gnutls
 LIBCAMERA_CONF_OPTS = \
-	-Dandroid=false \
-	-Ddocumentation=false \
+	-Dandroid=disabled \
+	-Ddocumentation=disabled \
 	-Dtest=false \
+	-Dpycamera=disabled \
 	-Dwerror=false
 LIBCAMERA_INSTALL_STAGING = YES
 LIBCAMERA_LICENSE = \
@@ -47,17 +51,25 @@ else
 LIBCAMERA_CONF_OPTS += -Dv4l2=false
 endif
 
+LIBCAMERA_PIPELINES-$(BR2_PACKAGE_LIBCAMERA_PIPELINE_IMX8_ISI) += imx8-isi
 LIBCAMERA_PIPELINES-$(BR2_PACKAGE_LIBCAMERA_PIPELINE_IPU3) += ipu3
-ifeq ($(BR2_PACKAGE_LIBCAMERA_PIPELINE_RASPBERRYPI),y)
-LIBCAMERA_PIPELINES-y += raspberrypi
+LIBCAMERA_PIPELINES-$(BR2_PACKAGE_LIBCAMERA_PIPELINE_RKISP1) += rkisp1
+ifeq ($(BR2_PACKAGE_LIBCAMERA_PIPELINE_RPI_VC4),y)
+LIBCAMERA_PIPELINES-y += rpi/vc4
 LIBCAMERA_DEPENDENCIES += boost
 endif
-LIBCAMERA_PIPELINES-$(BR2_PACKAGE_LIBCAMERA_PIPELINE_RKISP1) += rkisp1
 LIBCAMERA_PIPELINES-$(BR2_PACKAGE_LIBCAMERA_PIPELINE_SIMPLE) += simple
 LIBCAMERA_PIPELINES-$(BR2_PACKAGE_LIBCAMERA_PIPELINE_UVCVIDEO) += uvcvideo
 LIBCAMERA_PIPELINES-$(BR2_PACKAGE_LIBCAMERA_PIPELINE_VIMC) += vimc
 
 LIBCAMERA_CONF_OPTS += -Dpipelines=$(subst $(space),$(comma),$(LIBCAMERA_PIPELINES-y))
+
+ifeq ($(BR2_PACKAGE_LIBCAMERA_COMPLIANCE),y)
+LIBCAMERA_DEPENDENCIES += gtest libevent
+LIBCAMERA_CONF_OPTS += -Dlc-compliance=enabled
+else
+LIBCAMERA_CONF_OPTS += -Dlc-compliance=disabled
+endif
 
 # gstreamer-video-1.0, gstreamer-allocators-1.0
 ifeq ($(BR2_PACKAGE_GSTREAMER1)$(BR2_PACKAGE_GST1_PLUGINS_BASE),yy)
@@ -75,12 +87,54 @@ else
 LIBCAMERA_CONF_OPTS += -Dqcam=disabled
 endif
 
+ifeq ($(BR2_PACKAGE_LIBEVENT),y)
+LIBCAMERA_CONF_OPTS += -Dcam=enabled
+LIBCAMERA_DEPENDENCIES += libevent
+else
+LIBCAMERA_CONF_OPTS += -Dcam=disabled
+endif
+
 ifeq ($(BR2_PACKAGE_TIFF),y)
 LIBCAMERA_DEPENDENCIES += tiff
 endif
 
 ifeq ($(BR2_PACKAGE_HAS_UDEV),y)
+LIBCAMERA_CONF_OPTS += -Dudev=enabled
 LIBCAMERA_DEPENDENCIES += udev
+else
+LIBCAMERA_CONF_OPTS += -Dudev=disabled
 endif
+
+ifeq ($(BR2_PACKAGE_LTTNG_LIBUST),y)
+LIBCAMERA_CONF_OPTS += -Dtracing=enabled
+LIBCAMERA_DEPENDENCIES += lttng-libust
+else
+LIBCAMERA_CONF_OPTS += -Dtracing=disabled
+endif
+
+ifeq ($(BR2_PACKAGE_LIBEXECINFO),y)
+LIBCAMERA_DEPENDENCIES += libexecinfo
+LIBCAMERA_LDFLAGS = $(TARGET_LDFLAGS) -lexecinfo
+endif
+
+# Open-Source IPA shlibs need to be signed in order to be runnable within the
+# same process, otherwise they are deemed Closed-Source and run in another
+# process and communicate over IPC.
+# Buildroot sanitizes RPATH in a post build process. meson gets rid of rpath
+# while installing so we don't need to do it manually here.
+# Buildroot may strip symbols, so we need to do the same before signing
+# otherwise the signature won't match the shlib on the rootfs. Since meson
+# install target is signing the shlibs, we need to strip them before.
+LIBCAMERA_STRIP_FIND_CMD = \
+	find $(@D)/build/src/ipa \
+	$(if $(call qstrip,$(BR2_STRIP_EXCLUDE_FILES)), \
+		-not \( $(call findfileclauses,$(call qstrip,$(BR2_STRIP_EXCLUDE_FILES))) \) ) \
+	-type f -name 'ipa_*.so' -print0
+
+define LIBCAMERA_BUILD_STRIP_IPA_SO
+	$(LIBCAMERA_STRIP_FIND_CMD) | xargs --no-run-if-empty -0 $(STRIPCMD)
+endef
+
+LIBCAMERA_POST_BUILD_HOOKS += LIBCAMERA_BUILD_STRIP_IPA_SO
 
 $(eval $(meson-package))

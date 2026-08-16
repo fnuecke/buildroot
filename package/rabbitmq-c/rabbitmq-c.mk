@@ -4,19 +4,18 @@
 #
 ################################################################################
 
-RABBITMQ_C_VERSION = 0.10.0
+RABBITMQ_C_VERSION = 0.13.0
 RABBITMQ_C_SITE = $(call github,alanxz,rabbitmq-c,v$(RABBITMQ_C_VERSION))
 RABBITMQ_C_LICENSE = MIT
-RABBITMQ_C_LICENSE_FILES = LICENSE-MIT
+RABBITMQ_C_LICENSE_FILES = LICENSE README.md
+RABBITMQ_C_CPE_ID_VALID = YES
 RABBITMQ_C_INSTALL_STAGING = YES
 RABBITMQ_C_CONF_OPTS = \
 	-DBUILD_API_DOCS=OFF \
 	-DBUILD_TOOLS_DOCS=OFF
 
-# Before CMake 3.10, passing THREADS_PTHREAD_ARG=OFF was needed to
-# disable a try_run() call in the FindThreads tests, which caused a
-# build failure when cross-compiling.
-RABBITMQ_C_CONF_OPTS += -DTHREADS_PTHREAD_ARG=OFF
+# 0001-Add-option-to-read-username-password-from-file.patch
+RABBITMQ_C_IGNORE_CVES += CVE-2023-35789
 
 # BUILD_SHARED_LIBS is handled in pkg-cmake.mk as it is a generic cmake variable
 ifeq ($(BR2_SHARED_STATIC_LIBS),y)

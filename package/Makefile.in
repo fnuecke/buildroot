@@ -17,7 +17,9 @@ else
 PARALLEL_JOBS := $(BR2_JLEVEL)
 endif
 
-MAKE1 := $(HOSTMAKE) -j1
+# Only build one job at a time, *and* to not randomise goals and
+# prerequisites ordering in make 4.4+
+MAKE1 := $(HOSTMAKE) -j1 $(if $(findstring --shuffle,$(MAKEFLAGS)),--shuffle=none)
 override MAKE = $(HOSTMAKE) \
 	$(if $(findstring j,$(filter-out --%,$(MAKEFLAGS))),,-j$(PARALLEL_JOBS))
 
@@ -39,8 +41,9 @@ endif
 # Compute GNU_TARGET_NAME
 GNU_TARGET_NAME = $(ARCH)-$(TARGET_VENDOR)-$(TARGET_OS)-$(LIBC)$(ABI)
 
-# FLAT binary format needs uclinux
-ifeq ($(BR2_BINFMT_FLAT),y)
+# FLAT binary format needs uclinux, except RISC-V 64-bits which needs
+# the regular linux name.
+ifeq ($(BR2_BINFMT_FLAT):$(BR2_RISCV_64),y:)
 TARGET_OS = uclinux
 else
 TARGET_OS = linux
@@ -50,8 +53,12 @@ ifeq ($(BR2_TOOLCHAIN_USES_UCLIBC),y)
 LIBC = uclibc
 else ifeq ($(BR2_TOOLCHAIN_USES_MUSL),y)
 LIBC = musl
-else
+else ifeq ($(BR2_TOOLCHAIN_USES_GLIBC),y)
 LIBC = gnu
+else ifeq ($(BR_BUILDING),y)
+# This happens if there is a bug in Buildroot that allows an
+# architecture configuration that isn't supported by any library.
+$(error No C library enabled, this is not possible.)
 endif
 
 # The ABI suffix is a bit special on ARM, as it needs to be
@@ -70,17 +77,8 @@ ABI := $(ABI)hf
 endif
 endif
 
-# For C-SKY abiv1 & abiv2
-ifeq ($(BR2_csky),y)
-ifeq ($(BR2_ck610),y)
-ABI = abiv1
-else
-ABI = abiv2
-endif
-endif
-
 # For FSL PowerPC there's SPE
-ifeq ($(BR2_powerpc_SPE),y)
+ifeq ($(BR2_POWERPC_CPU_HAS_SPE),y)
 ABI = spe
 # MPC8540s are e500v1 with single precision FP
 ifeq ($(BR2_powerpc_8540),y)
@@ -136,6 +134,9 @@ endif
 ifeq ($(BR2_OPTIMIZE_FAST),y)
 TARGET_OPTIMIZATION = -Ofast
 endif
+ifeq ($(BR2_ENABLE_DEBUG),)
+TARGET_DEBUGGING = -g0
+endif
 ifeq ($(BR2_DEBUG_1),y)
 TARGET_DEBUGGING = -g1
 endif
@@ -161,9 +162,14 @@ ifeq ($(BR2_FORTIFY_SOURCE_1),y)
 TARGET_HARDENED += -D_FORTIFY_SOURCE=1
 else ifeq ($(BR2_FORTIFY_SOURCE_2),y)
 TARGET_HARDENED += -D_FORTIFY_SOURCE=2
+else ifeq ($(BR2_FORTIFY_SOURCE_3),y)
+TARGET_HARDENED += -D_FORTIFY_SOURCE=3
 endif
 
 TARGET_CPPFLAGS += -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
+ifeq ($(BR2_TIME_BITS_64),y)
+TARGET_CPPFLAGS += -D_TIME_BITS=64
+endif
 TARGET_CFLAGS = $(TARGET_CPPFLAGS) $(TARGET_ABI) $(TARGET_OPTIMIZATION) $(TARGET_DEBUGGING) $(TARGET_HARDENED)
 TARGET_CXXFLAGS = $(TARGET_CFLAGS)
 TARGET_FCFLAGS = $(TARGET_ABI) $(TARGET_OPTIMIZATION) $(TARGET_DEBUGGING)
@@ -175,13 +181,22 @@ TARGET_CXXFLAGS += -fno-dwarf2-cfi-asm
 endif
 
 ifeq ($(BR2_BINFMT_FLAT),y)
-TARGET_CFLAGS += $(if $($(PKG)_FLAT_STACKSIZE),-Wl$(comma)-elf2flt=-s$($(PKG)_FLAT_STACKSIZE),\
+ifeq ($(BR2_RISCV_64),y)
+TARGET_CFLAGS += -fPIC
+endif
+ifeq ($(BR2_BINFMT_FLAT_ONE),y)
+ELF2FLT_FLAGS = $(if $($(PKG)_FLAT_STACKSIZE),\
+	-Wl$(comma)-elf2flt="-r -s$($(PKG)_FLAT_STACKSIZE)",\
+        -Wl$(comma)-elf2flt=-r)
+else
+ELF2FLT_FLAGS = $(if $($(PKG)_FLAT_STACKSIZE),\
+	-Wl$(comma)-elf2flt=-s$($(PKG)_FLAT_STACKSIZE),\
 	-Wl$(comma)-elf2flt)
-TARGET_CXXFLAGS += $(if $($(PKG)_FLAT_STACKSIZE),-Wl$(comma)-elf2flt=-s$($(PKG)_FLAT_STACKSIZE),\
-	-Wl$(comma)-elf2flt)
-TARGET_FCFLAGS += $(if $($(PKG)_FLAT_STACKSIZE),-Wl$(comma)-elf2flt=-s$($(PKG)_FLAT_STACKSIZE),\
-	-Wl$(comma)-elf2flt)
-TARGET_LDFLAGS += $(if $($(PKG)_FLAT_STACKSIZE),-Wl$(comma)-elf2flt=-s$($(PKG)_FLAT_STACKSIZE),-Wl$(comma)-elf2flt)
+endif
+TARGET_CFLAGS += $(ELF2FLT_FLAGS)
+TARGET_CXXFLAGS += $(ELF2FLT_FLAGS)
+TARGET_FCFLAGS += $(ELF2FLT_FLAGS)
+TARGET_LDFLAGS += $(ELF2FLT_FLAGS)
 endif
 
 ifeq ($(BR2_BINFMT_FLAT_SHARED),y)
@@ -197,16 +212,23 @@ else
 TARGET_CROSS = $(HOST_DIR)/bin/$(TOOLCHAIN_EXTERNAL_PREFIX)-
 endif
 
+# gcc-4.7 and later ships with wrappers that will automatically pass
+# arguments to the binutils tools. Those are paths to necessary linker
+# plugins.
+ifeq ($(BR2_TOOLCHAIN_GCC_AT_LEAST_4_7),y)
+TARGET_GCC_WRAPPERS_PREFIX = gcc-
+endif
+
 # Define TARGET_xx variables for all common binutils/gcc
-TARGET_AR       = $(TARGET_CROSS)ar
+TARGET_AR       = $(TARGET_CROSS)$(TARGET_GCC_WRAPPERS_PREFIX)ar
 TARGET_AS       = $(TARGET_CROSS)as
 TARGET_CC       = $(TARGET_CROSS)gcc
 TARGET_CPP      = $(TARGET_CROSS)cpp
 TARGET_CXX      = $(TARGET_CROSS)g++
 TARGET_FC       = $(TARGET_CROSS)gfortran
 TARGET_LD       = $(TARGET_CROSS)ld
-TARGET_NM       = $(TARGET_CROSS)nm
-TARGET_RANLIB   = $(TARGET_CROSS)ranlib
+TARGET_NM       = $(TARGET_CROSS)$(TARGET_GCC_WRAPPERS_PREFIX)nm
+TARGET_RANLIB   = $(TARGET_CROSS)$(TARGET_GCC_WRAPPERS_PREFIX)ranlib
 TARGET_READELF  = $(TARGET_CROSS)readelf
 TARGET_OBJCOPY  = $(TARGET_CROSS)objcopy
 TARGET_OBJDUMP  = $(TARGET_CROSS)objdump
@@ -241,7 +263,9 @@ export PERL=$(shell which perl)
 # finds this perl module by exporting the proper value for PERL5LIB.
 export PERL5LIB=$(HOST_DIR)/lib/perl
 
-TARGET_MAKE_ENV = PATH=$(BR_PATH)
+TARGET_MAKE_ENV = \
+	GIT_DIR=. \
+	PATH=$(BR_PATH)
 
 TARGET_CONFIGURE_OPTS = \
 	$(TARGET_MAKE_ENV) \
@@ -285,6 +309,7 @@ TARGET_CONFIGURE_OPTS = \
 
 
 HOST_MAKE_ENV = \
+	GIT_DIR=. \
 	PATH=$(BR_PATH) \
 	PKG_CONFIG="$(PKG_CONFIG_HOST_BINARY)" \
 	PKG_CONFIG_SYSROOT_DIR="/" \
@@ -318,6 +343,7 @@ EXTRA_ENV = \
 	PATH=$(BR_PATH) \
 	BR2_DL_DIR=$(BR2_DL_DIR) \
 	BUILD_DIR=$(BUILD_DIR) \
+	CONFIG_DIR=$(CONFIG_DIR) \
 	O=$(CANONICAL_O)
 
 ################################################################################
@@ -408,9 +434,8 @@ else ifeq ($(BR2_SHARED_STATIC_LIBS),y)
 SHARED_STATIC_LIBS_OPTS = --enable-static --enable-shared
 endif
 
-ifeq ($(BR2_COMPILER_PARANOID_UNSAFE_PATH),y)
+# Used by our binutils patches.
 export BR_COMPILER_PARANOID_UNSAFE_PATH=enabled
-endif
 
 include package/pkg-download.mk
 include package/pkg-autotools.mk
@@ -427,3 +452,4 @@ include package/pkg-waf.mk
 include package/pkg-golang.mk
 include package/pkg-meson.mk
 include package/pkg-qmake.mk
+include package/pkg-cargo.mk

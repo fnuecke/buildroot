@@ -1,5 +1,5 @@
-# Hash from: https://download.qt.io/official_releases/qt/5.15/5.15.1/submodules/qtcharts-everywhere-src-5.15.1.tar.xz.sha256
-sha256  a59efbf095bf8a62c29f6fe90a3e943bbc7583d1d2fed16681675b923c45ef3b  qtcharts-everywhere-src-5.15.1.tar.xz
+# Locally calculated
+sha256  66dae46a8bcb1dfc10dd3404296701c41e50658792e4a6a7317a182fad6f36c8  qtcharts-e17308d5ce83a8b66aeeaaaf16ce16d4ee6b2826.tar.bz2
 
 # Hashes for license files:
-sha256 8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903 LICENSE.GPL3
+sha256  8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903  LICENSE.GPL3

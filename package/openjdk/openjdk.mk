@@ -4,19 +4,15 @@
 #
 ################################################################################
 
-ifeq ($(BR2_OPENJDK_VERSION_LATEST),y)
-OPENJDK_VERSION_MAJOR = 14.0.2
-OPENJDK_VERSION_MINOR = 12
-OPENJDK_VERSION = $(OPENJDK_VERSION_MAJOR)+$(OPENJDK_VERSION_MINOR)
-OPENJDK_SOURCE = jdk-$(OPENJDK_VERSION).tar.gz
-OPENJDK_SITE = https://hg.openjdk.java.net/jdk-updates/jdk14u/archive
+ifeq ($(BR2_PACKAGE_OPENJDK_VERSION_21),y)
+OPENJDK_VERSION_MAJOR = 21
+OPENJDK_VERSION_MINOR = 0.1+12
 else
-OPENJDK_VERSION_MAJOR = 11.0.8
-OPENJDK_VERSION_MINOR = 10
-OPENJDK_VERSION = $(OPENJDK_VERSION_MAJOR)+$(OPENJDK_VERSION_MINOR)
-OPENJDK_SOURCE = jdk-$(OPENJDK_VERSION).tar.gz
-OPENJDK_SITE = https://hg.openjdk.java.net/jdk-updates/jdk11u/archive
+OPENJDK_VERSION_MAJOR = 17
+OPENJDK_VERSION_MINOR = 0.9+9
 endif
+OPENJDK_VERSION = $(OPENJDK_VERSION_MAJOR).$(OPENJDK_VERSION_MINOR)
+OPENJDK_SITE = $(call github,openjdk,jdk$(OPENJDK_VERSION_MAJOR)u,jdk-$(OPENJDK_VERSION))
 
 OPENJDK_LICENSE = GPL-2.0+ with exception
 OPENJDK_LICENSE_FILES = LICENSE
@@ -87,7 +83,6 @@ OPENJDK_CONF_ENV = \
 
 OPENJDK_CONF_OPTS = \
 	--disable-full-docs \
-	--disable-hotspot-gtest \
 	--disable-manpages \
 	--disable-warnings-as-errors \
 	--enable-headless-only \

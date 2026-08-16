@@ -1,4 +1,5 @@
-# md5 from https://pypi.python.org/pypi/aiocoap/json, sha256 locally computed
-md5	f5fed00767b4197f2fbaa0ff95cbbf78  aiocoap-0.3.tar.gz
-sha256	402d4151db6d8d0b1d66af5b6e10e0de1521decbf12140637e5b8d2aa9c5aef6  aiocoap-0.3.tar.gz
-sha256  2bb211d412a6bfa4b2a9cf01123c7fe90e5e6185938896e23ab07b84f8494180  LICENSE
+# md5, sha256 from https://pypi.org/pypi/aiocoap/json
+md5  baebbc38bc8db31472c438521f7121e3  aiocoap-0.4.7.tar.gz
+sha256  90f3bcaffd454f5421d3ad55ddbe3fe10a686d4b9f3c4445d427b130493a96a4  aiocoap-0.4.7.tar.gz
+# Locally computed sha256 checksums
+sha256  0ad39132b3529369998eb7493b950dc7452b07ba9d8cca7619766b6c6d8270fa  doc/LICENSE.rst

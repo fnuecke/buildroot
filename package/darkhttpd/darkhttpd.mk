@@ -4,10 +4,11 @@
 #
 ################################################################################
 
-DARKHTTPD_VERSION = 1.12
-DARKHTTPD_SITE = https://unix4lyfe.org/darkhttpd
-DARKHTTPD_SOURCE = darkhttpd-$(DARKHTTPD_VERSION).tar.bz2
-DARKHTTPD_LICENSE = MIT
+DARKHTTPD_VERSION = 1.15
+DARKHTTPD_SITE = $(call github,emikulic,darkhttpd,v$(DARKHTTPD_VERSION))
+DARKHTTPD_LICENSE = ISC
+DARKHTTPD_LICENSE_FILES = COPYING
+DARKHTTPD_CPE_ID_VALID = YES
 
 define DARKHTTPD_BUILD_CMDS
 	$(TARGET_CONFIGURE_OPTS) $(MAKE) -C $(@D)

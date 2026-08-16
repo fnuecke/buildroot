@@ -8,7 +8,10 @@ APCUPSD_VERSION = 3.14.14
 APCUPSD_SITE = http://downloads.sourceforge.net/project/apcupsd/apcupsd%20-%20Stable/$(APCUPSD_VERSION)
 APCUPSD_LICENSE = GPL-2.0
 APCUPSD_LICENSE_FILES = COPYING
+APCUPSD_CPE_ID_VENDOR = apcupsd
+APCUPSD_SELINUX_MODULES = apache apcupsd
 APCUPSD_CONF_OPTS = --disable-test
+APCUPSD_CONF_ENV = ac_cv_path_SHUTDOWN=/sbin/shutdown
 
 ifneq ($(BR2_PACKAGE_APCUPSD_MODBUS_USB)$(BR2_PACKAGE_APCUPSD_USB),)
 APCUPSD_CONF_ENV += ac_cv_path_usbcfg=$(STAGING_DIR)/usr/bin/libusb-config
@@ -32,7 +35,7 @@ endif
 
 ifeq ($(BR2_PACKAGE_APCUPSD_MODBUS_USB),y)
 APCUPSD_CONF_OPTS += --enable-modbus-usb
-APCUPSD_DEPENDENCIES = libusb libusb-compat
+APCUPSD_DEPENDENCIES += libusb libusb-compat
 else
 APCUPSD_CONF_OPTS += --disable-modbus-usb
 endif
@@ -63,14 +66,14 @@ endif
 
 ifeq ($(BR2_PACKAGE_APCUPSD_USB),y)
 APCUPSD_CONF_OPTS += --enable-usb
-APCUPSD_DEPENDENCIES = libusb libusb-compat
+APCUPSD_DEPENDENCIES += libusb libusb-compat
 else
 APCUPSD_CONF_OPTS += --disable-usb
 endif
 
 define APCUPSD_BUILD_CMDS
-	$(TARGET_MAKE_ENV) $(MAKE) -C $(@D)/src
-	$(TARGET_MAKE_ENV) $(MAKE) -C $(@D)/platforms
+	$(TARGET_MAKE_ENV) $(MAKE) LD="$(TARGET_CXX)" -C $(@D)/src
+	$(TARGET_MAKE_ENV) $(MAKE) LD="$(TARGET_CXX)" -C $(@D)/platforms
 endef
 
 define APCUPSD_INSTALL_TARGET_CMDS

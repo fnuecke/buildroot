@@ -4,11 +4,13 @@
 #
 ################################################################################
 
-PYTHON_BSDIFF4_VERSION = 1.2.0
+PYTHON_BSDIFF4_VERSION = 1.2.4
 PYTHON_BSDIFF4_SOURCE = bsdiff4-$(PYTHON_BSDIFF4_VERSION).tar.gz
-PYTHON_BSDIFF4_SITE = https://files.pythonhosted.org/packages/9b/ca/06cd939630ca78125c36489f92b52918980cbcfee2dcc0969411eb5ae8a8
+PYTHON_BSDIFF4_SITE = https://files.pythonhosted.org/packages/58/b2/ccf01309dda2c08e0600027bc0f5a99534c91f2f8728b5009fc363df6c2c
 PYTHON_BSDIFF4_LICENSE = BSD-2-Clause, BSD-Protection (core.c)
 PYTHON_BSDIFF4_LICENSE_FILES = LICENSE
-PYTHON_BSDIFF4_SETUP_TYPE = distutils
+PYTHON_BSDIFF4_CPE_ID_VENDOR = pypi
+PYTHON_BSDIFF4_CPE_ID_PRODUCT = bsdiff4
+PYTHON_BSDIFF4_SETUP_TYPE = setuptools
 
 $(eval $(python-package))

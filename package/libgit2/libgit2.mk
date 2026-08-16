@@ -4,19 +4,30 @@
 #
 ################################################################################
 
-LIBGIT2_VERSION = 1.1.0
-LIBGIT2_SITE = https://github.com/libgit2/libgit2/releases/download/v$(LIBGIT2_VERSION)
-LIBGIT2_LICENSE = GPL-2.0 with linking exception, MIT (sha1), wildmatch license (wildmatch)
+LIBGIT2_VERSION = 1.7.2
+LIBGIT2_SITE = $(call github,libgit2,libgit2,v$(LIBGIT2_VERSION))
+LIBGIT2_LICENSE = \
+	GPL-2.0 with linking exception, \
+	MIT (sha1), \
+	BSD-3-Clause (sha256), \
+	wildmatch license (wildmatch), \
+	CC0-1.0 (xoroshiro256), \
+	BSD-2-Clause (basename_r), \
+	LGPL-2.1+ (libxdiff)
 LIBGIT2_LICENSE_FILES = COPYING
+LIBGIT2_CPE_ID_VALID = YES
 LIBGIT2_INSTALL_STAGING = YES
 
 LIBGIT2_CONF_OPTS = \
 	-DUSE_GSSAPI=OFF \
-	-DBUILD_CLAR=OFF \
 	-DUSE_ICONV=ON \
 	-DREGEX_BACKEND=regcomp \
 	-DUSE_HTTP_PARSER=system \
-	-DTHREADSAFE=$(if $(BR2_TOOLCHAIN_HAS_THREADS),ON,OFF)
+	-DUSE_NTLMCLIENT=OFF \
+	-DUSE_XDIFF=builtin \
+	-DUSE_THREADS=$(if $(BR2_TOOLCHAIN_HAS_THREADS),ON,OFF)
+
+LIBGIT2_SUPPORTS_IN_SOURCE_BUILD = NO
 
 LIBGIT2_DEPENDENCIES = zlib libhttpparser
 
@@ -41,6 +52,18 @@ LIBGIT2_DEPENDENCIES += openssl
 LIBGIT2_CONF_OPTS += -DUSE_HTTPS=OpenSSL
 else
 LIBGIT2_CONF_OPTS += -DUSE_HTTPS=OFF
+endif
+
+ifeq ($(BR2_PACKAGE_LIBGIT2_CLI),y)
+LIBGIT2_CONF_OPTS += -DBUILD_CLI=ON
+else
+LIBGIT2_CONF_OPTS += -DBUILD_CLI=OFF
+endif
+
+ifeq ($(BR2_TOOLCHAIN_HAS_LIBATOMIC),y)
+LIBGIT2_CONF_OPTS += \
+	-DCMAKE_EXE_LINKER_FLAGS=-latomic \
+	-DCMAKE_SHARED_LINKER_FLAGS=-latomic
 endif
 
 $(eval $(cmake-package))

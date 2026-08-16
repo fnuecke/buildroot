@@ -1,4 +1,4 @@
 # Locally calculated after checking pgp signature
-# https://waterlan.home.xs4all.nl/dos2unix/dos2unix-7.4.1.tar.gz.asc
-sha256	1cd58a60b03ed28fa39046102a185c5e88c4f7665e1e0417c25de7f8b9f78623	dos2unix-7.4.1.tar.gz
-sha256	af32dca9450e90b9a7a0f6408da1554466382cc81960108c59512f78a666a276	COPYING.txt
+# https://waterlan.home.xs4all.nl/dos2unix/dos2unix-7.5.2.tar.gz.asc
+sha256  264742446608442eb48f96c20af6da303cb3a92b364e72cb7e24f88239c4bf3a  dos2unix-7.5.2.tar.gz
+sha256  03b60fa2cf28b2c6dd585a13b32377c1f87b8f016db44ce2ab6bc7eb306220e2  COPYING.txt

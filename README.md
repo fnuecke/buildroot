@@ -24,8 +24,8 @@ dependencies {
 
 ## Building
 
-Since we want small kernel and rootfs, we're kinda stuck on an older version of Buildroot (2020.11-rc1), because things just keep growing. Sigh.
+Based on Buildroot 2024.02.3 (Linux 6.6, GCC 12.3, OpenSBI 1.3). Since we want a small kernel and rootfs and things just keep growing, we stay a few releases behind rather than tracking the latest.
 
-Old Buildroot does not build on a modern host — the toolchain and several host packages don't like current glibc. `./gradlew build` therefore runs `make` inside the container Buildroot's own CI used.
+Buildroot of this vintage does not build on a modern host — the toolchain and several host packages don't like current glibc. `./gradlew build` therefore runs `make` inside the container Buildroot's own CI used, pinned in [.gitlab-ci.yml](.gitlab-ci.yml); override it with `-PbuildrootDockerImage=…`.
 
 Our config is [configs/sedna-riscv64_defconfig](configs/sedna-riscv64_defconfig). Run `./config-sedna.sh` to regenerate the top-level `.config` from it.

@@ -1,5 +1,5 @@
-# From: http://sebastien.godard.pagesperso-orange.fr/download.html
-sha1  4da5a48d0152eba5b34d94bf28dcb08fc48fb32b  sysstat-12.2.1.tar.xz
+# From: https://sysstat.github.io/2023/12/17/sysstat-12.7.5.html
+sha1  f329edff36f462385a7c20d2a136b667ab8db735  sysstat-12.7.5.tar.xz
 # Locally calculated
-sha256  8edb0e19b514ac560a098a02933a4735b881296d61014db89bf80f05dd7a4732  sysstat-12.2.1.tar.xz
+sha256  57664040a549d33bb06a1121c7124d4cadd9b8b35f815856c194393047cd4d6b  sysstat-12.7.5.tar.xz
 sha256  db296f2f7f35bca3a174efb0eb392b3b17bd94b341851429a3dff411b1c2fc73  COPYING
