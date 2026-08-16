@@ -11,7 +11,7 @@ set -e
 cd "$(dirname "$0")"
 
 DEFCONFIG=sedna-riscv64_defconfig
-IMAGE="${BUILDROOT_DOCKER_IMAGE:-buildroot/base:20200814.2228}"
+IMAGE="${BUILDROOT_DOCKER_IMAGE:-registry.gitlab.com/buildroot.org/buildroot/base:20230207.1123}"
 
 if [ "$1" = "--native" ]; then
 	exec make "$DEFCONFIG"

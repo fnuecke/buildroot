@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-BLUEZ_ALSA_VERSION = 2.1.0
+BLUEZ_ALSA_VERSION = 4.1.1
 BLUEZ_ALSA_SITE = $(call github,Arkq,bluez-alsa,v$(BLUEZ_ALSA_VERSION))
 BLUEZ_ALSA_LICENSE = MIT
 BLUEZ_ALSA_LICENSE_FILES = LICENSE
@@ -14,10 +14,15 @@ BLUEZ_ALSA_DEPENDENCIES = alsa-lib bluez5_utils libglib2 sbc host-pkgconf
 BLUEZ_ALSA_AUTORECONF = YES
 
 BLUEZ_ALSA_CONF_OPTS = \
+	--enable-a2dpconf \
 	--enable-aplay \
 	--disable-debug-time \
 	--with-alsaplugindir=/usr/lib/alsa-lib \
 	--with-alsaconfdir=/etc/alsa/conf.d
+
+ifeq ($(BR2_PACKAGE_ALSA_PLUGINS),y)
+BLUEZ_ALSA_DEPENDENCIES += alsa-plugins
+endif
 
 ifeq ($(BR2_PACKAGE_FDK_AAC),y)
 BLUEZ_ALSA_DEPENDENCIES += fdk-aac
@@ -66,6 +71,13 @@ BLUEZ_ALSA_DEPENDENCIES += readline
 BLUEZ_ALSA_CONF_OPTS += --enable-rfcomm
 else
 BLUEZ_ALSA_CONF_OPTS += --disable-rfcomm
+endif
+
+ifeq ($(BR2_PACKAGE_LIBOPENAPTX),y)
+BLUEZ_ALSA_DEPENDENCIES += libopenaptx
+BLUEZ_ALSA_CONF_OPTS += --with-libopenaptx --enable-aptx --enable-aptx-hd
+else
+BLUEZ_ALSA_CONF_OPTS += --without-libopenaptx --disable-aptx --disable-aptx-hd
 endif
 
 $(eval $(autotools-package))

@@ -4,18 +4,17 @@
 #
 ################################################################################
 
-LIBSSH2_VERSION = 1.9.0
+LIBSSH2_VERSION = 1.11.0
+LIBSSH2_SOURCE= libssh2-$(LIBSSH2_VERSION).tar.xz
 LIBSSH2_SITE = https://www.libssh2.org/download
 LIBSSH2_LICENSE = BSD
 LIBSSH2_LICENSE_FILES = COPYING
+LIBSSH2_CPE_ID_VENDOR = libssh2
 LIBSSH2_INSTALL_STAGING = YES
-LIBSSH2_CONF_OPTS = --disable-examples-build
+LIBSSH2_CONF_OPTS = --disable-examples-build --disable-rpath
 
-# 0003-packet-c-improve-message-parsing.patch
-LIBSSH2_IGNORE_CVES += CVE-2019-17498
-
-# patch touching configure.ac and acinclude.m4
-LIBSSH2_AUTORECONF = YES
+# 0002-src-add-strict-KEX-to-fix-CVE-2023-48795-Terrapin-Attack.patch
+LIBSSH2_IGNORE_CVES += CVE-2023-48795
 
 ifeq ($(BR2_PACKAGE_LIBSSH2_MBEDTLS),y)
 LIBSSH2_DEPENDENCIES += mbedtls

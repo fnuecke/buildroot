@@ -1,6 +1,6 @@
-# retrieved by scancpan from http://cpan.metacpan.org/
-md5    9d37086aec1b29bab52a9575687e3557 Plack-1.0047.tar.gz
-sha256 322c93f5acc0a0f0e11fd4a76188f978bdc14338a9f1df3ae535227017046561 Plack-1.0047.tar.gz
+# retrieved by scancpan from https://cpan.metacpan.org/
+md5  0b3e573458b37ad69069fc8cb307b6b8  Plack-1.0051.tar.gz
+sha256  bebde91c42298ed6ec8e6c82b21433a1b49aa39412c247f3905b80f955acf77b  Plack-1.0051.tar.gz
 
 # computed by scancpan
-sha256 fb67655b5d1adedef83aed2c79bf4f89c68d8595a7060815520173f663a3631d LICENSE
+sha256  8a0c0ad4682691b5bc138e553636adfc8bb38f8885c4c44fd421ec8cc69c9a8f  LICENSE

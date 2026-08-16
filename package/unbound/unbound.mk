@@ -4,11 +4,13 @@
 #
 ################################################################################
 
-UNBOUND_VERSION = 1.12.0
+UNBOUND_VERSION = 1.19.1
 UNBOUND_SITE = https://www.unbound.net/downloads
+UNBOUND_INSTALL_STAGING = YES
 UNBOUND_DEPENDENCIES = host-pkgconf expat libevent openssl
 UNBOUND_LICENSE = BSD-3-Clause
 UNBOUND_LICENSE_FILES = LICENSE
+UNBOUND_CPE_ID_VENDOR = nlnetlabs
 UNBOUND_CONF_OPTS = \
 	--disable-rpath \
 	--disable-debug \
@@ -16,6 +18,7 @@ UNBOUND_CONF_OPTS = \
 	--with-pidfile=/var/run/unbound.pid \
 	--with-rootkey-file=/etc/unbound/root.key \
 	--enable-tfo-server \
+	--with-libevent=$(STAGING_DIR)/usr \
 	--with-libexpat=$(STAGING_DIR)/usr \
 	--with-ssl=$(STAGING_DIR)/usr
 
@@ -33,7 +36,7 @@ else
 UNBOUND_CONF_OPTS += --without-pthreads
 endif
 
-ifeq ($(BR2_GCC_ENABLE_LTO),y)
+ifeq ($(BR2_ENABLE_LTO),y)
 UNBOUND_CONF_OPTS += --enable-flto
 else
 UNBOUND_CONF_OPTS += --disable-flto

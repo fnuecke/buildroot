@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-MEDIASTREAMER_VERSION = 4.3.1
+MEDIASTREAMER_VERSION = 4.4.8
 MEDIASTREAMER_SITE = \
 	https://gitlab.linphone.org/BC/public/mediastreamer2/-/archive/$(MEDIASTREAMER_VERSION)
 MEDIASTREAMER_LICENSE = GPL-3.0+
@@ -22,7 +22,7 @@ MEDIASTREAMER_CONF_OPTS = \
 	-DENABLE_UNIT_TESTS=OFF \
 	-DENABLE_ZRTP=OFF
 
-ifeq ($(BR2_PACKAGE_ALSA_LIB_MIXER)$(BR2_PACKAGE_ALSA_LIB_PCM),yy)
+ifeq ($(BR2_PACKAGE_ALSA_LIB),y)
 MEDIASTREAMER_CONF_OPTS += \
 	-DENABLE_ALSA=ON \
 	-DENABLE_SOUND=ON

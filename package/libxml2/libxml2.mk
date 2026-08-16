@@ -4,17 +4,15 @@
 #
 ################################################################################
 
-LIBXML2_VERSION = 2.9.10
-LIBXML2_SITE = http://xmlsoft.org/sources
+LIBXML2_VERSION_MAJOR = 2.12
+LIBXML2_VERSION = $(LIBXML2_VERSION_MAJOR).6
+LIBXML2_SOURCE = libxml2-$(LIBXML2_VERSION).tar.xz
+LIBXML2_SITE = \
+	https://download.gnome.org/sources/libxml2/$(LIBXML2_VERSION_MAJOR)
 LIBXML2_INSTALL_STAGING = YES
 LIBXML2_LICENSE = MIT
-LIBXML2_LICENSE_FILES = COPYING
-# 0001-Fix-infinite-loop-in-xmlStringLenDecodeEntities.patch
-LIBXML2_IGNORE_CVES += CVE-2020-7595
-# 0002-Fix-memory-leak-in-xmlSchemaValidateStream.patch
-LIBXML2_IGNORE_CVES += CVE-2019-20388
-# 0003-Fix-out-of-bounds-read-with-xmllint--htmlout.patch
-LIBXML2_IGNORE_CVES += CVE-2020-24977
+LIBXML2_LICENSE_FILES = Copyright
+LIBXML2_CPE_ID_VENDOR = xmlsoft
 LIBXML2_CONFIG_SCRIPTS = xml2-config
 
 # relocation truncated to fit: R_68K_GOT16O
@@ -22,12 +20,33 @@ ifeq ($(BR2_m68k_cf),y)
 LIBXML2_CONF_ENV += CFLAGS="$(TARGET_CFLAGS) -mxgot"
 endif
 
-LIBXML2_CONF_OPTS = --with-gnu-ld --without-python --without-debug
+LIBXML2_CONF_OPTS = --with-gnu-ld --without-debug
 
 HOST_LIBXML2_DEPENDENCIES = host-pkgconf
 LIBXML2_DEPENDENCIES = host-pkgconf
 
-HOST_LIBXML2_CONF_OPTS = --without-zlib --without-lzma --without-python
+HOST_LIBXML2_CONF_OPTS = --without-zlib --without-lzma
+
+ifeq ($(BR2_PACKAGE_PYTHON3),y)
+LIBXML2_DEPENDENCIES += python3
+LIBXML2_CONF_OPTS += --with-python
+else
+LIBXML2_CONF_OPTS += --without-python
+endif
+
+ifeq ($(BR2_PACKAGE_HOST_PYTHON3),y)
+HOST_LIBXML2_DEPENDENCIES += host-python3
+HOST_LIBXML2_CONF_OPTS += --with-python
+else
+HOST_LIBXML2_CONF_OPTS += --without-python
+endif
+
+ifeq ($(BR2_PACKAGE_ICU),y)
+LIBXML2_DEPENDENCIES += icu
+LIBXML2_CONF_OPTS += --with-icu
+else
+LIBXML2_CONF_OPTS += --without-icu
+endif
 
 ifeq ($(BR2_PACKAGE_ZLIB),y)
 LIBXML2_DEPENDENCIES += zlib

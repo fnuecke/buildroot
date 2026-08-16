@@ -4,11 +4,14 @@
 #
 ################################################################################
 
-NGINX_VERSION = 1.18.0
-NGINX_SITE = http://nginx.org/download
+NGINX_VERSION = 1.24.0
+NGINX_SITE = https://nginx.org/download
 NGINX_LICENSE = BSD-2-Clause
 NGINX_LICENSE_FILES = LICENSE
-NGINX_DEPENDENCIES = host-pkgconf
+NGINX_CPE_ID_VENDOR = f5
+NGINX_DEPENDENCIES = \
+	host-pkgconf \
+	$(if $(BR2_PACKAGE_LIBXCRYPT),libxcrypt)
 
 NGINX_CONF_OPTS = \
 	--crossbuild=Linux::$(BR2_ARCH) \
@@ -46,6 +49,7 @@ NGINX_CONF_ENV += \
 
 # prefix: nginx root configuration location
 NGINX_CONF_OPTS += \
+	--force-endianness=$(call qstrip,$(call LOWERCASE,$(BR2_ENDIAN))) \
 	--prefix=/usr \
 	--conf-path=/etc/nginx/nginx.conf \
 	--sbin-path=/usr/sbin/nginx \
@@ -55,11 +59,11 @@ NGINX_CONF_OPTS += \
 	--group=www-data \
 	--error-log-path=/var/log/nginx/error.log \
 	--http-log-path=/var/log/nginx/access.log \
-	--http-client-body-temp-path=/var/tmp/nginx/client-body \
-	--http-proxy-temp-path=/var/tmp/nginx/proxy \
-	--http-fastcgi-temp-path=/var/tmp/nginx/fastcgi \
-	--http-scgi-temp-path=/var/tmp/nginx/scgi \
-	--http-uwsgi-temp-path=/var/tmp/nginx/uwsgi
+	--http-client-body-temp-path=/var/cache/nginx/client-body \
+	--http-proxy-temp-path=/var/cache/nginx/proxy \
+	--http-fastcgi-temp-path=/var/cache/nginx/fastcgi \
+	--http-scgi-temp-path=/var/cache/nginx/scgi \
+	--http-uwsgi-temp-path=/var/cache/nginx/uwsgi
 
 NGINX_CONF_OPTS += \
 	$(if $(BR2_PACKAGE_NGINX_FILE_AIO),--with-file-aio) \
@@ -76,8 +80,8 @@ else
 NGINX_CONF_ENV += ngx_force_have_libatomic=no
 endif
 
-ifeq ($(BR2_PACKAGE_PCRE),y)
-NGINX_DEPENDENCIES += pcre
+ifeq ($(BR2_PACKAGE_PCRE2),y)
+NGINX_DEPENDENCIES += pcre2
 NGINX_CONF_OPTS += --with-pcre
 else
 NGINX_CONF_OPTS += --without-pcre
@@ -160,7 +164,7 @@ NGINX_CONF_OPTS += --without-http_gzip_module
 endif
 
 ifeq ($(BR2_PACKAGE_NGINX_HTTP_REWRITE_MODULE),y)
-NGINX_DEPENDENCIES += pcre
+NGINX_DEPENDENCIES += pcre2
 else
 NGINX_CONF_OPTS += --without-http_rewrite_module
 endif
@@ -199,7 +203,8 @@ NGINX_CONF_OPTS += \
 	$(if $(BR2_PACKAGE_NGINX_HTTP_UPSTREAM_IP_HASH_MODULE),,--without-http_upstream_ip_hash_module) \
 	$(if $(BR2_PACKAGE_NGINX_HTTP_UPSTREAM_LEAST_CONN_MODULE),,--without-http_upstream_least_conn_module) \
 	$(if $(BR2_PACKAGE_NGINX_HTTP_UPSTREAM_RANDOM_MODULE),,--without-http_upstream_random_module) \
-	$(if $(BR2_PACKAGE_NGINX_HTTP_UPSTREAM_KEEPALIVE_MODULE),,--without-http_upstream_keepalive_module)
+	$(if $(BR2_PACKAGE_NGINX_HTTP_UPSTREAM_KEEPALIVE_MODULE),,--without-http_upstream_keepalive_module) \
+	$(if $(BR2_PACKAGE_NGINX_HTTP_UPSTREAM_ZONE_MODULE),,--without-http_upstream_zone_module)
 
 else # !BR2_PACKAGE_NGINX_HTTP
 NGINX_CONF_OPTS += --without-http
@@ -227,6 +232,10 @@ NGINX_CONF_OPTS += --with-stream
 
 ifeq ($(BR2_PACKAGE_NGINX_STREAM_REALIP_MODULE),y)
 NGINX_CONF_OPTS += --with-stream_realip_module
+endif
+
+ifeq ($(BR2_PACKAGE_NGINX_STREAM_SET_MODULE),)
+NGINX_CONF_OPTS += --without-stream_set_module
 endif
 
 ifeq ($(BR2_PACKAGE_NGINX_STREAM_SSL_MODULE),y)

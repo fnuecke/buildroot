@@ -23,7 +23,10 @@ LINKNX_DEPENDENCIES = \
 	host-pkgconf \
 	libpthsem \
 	$(if $(BR2_PACKAGE_ARGP_STANDALONE),argp-standalone) \
-	$(if $(BR2_PACKAGE_LIBICONV),libiconv)
+	$(if $(BR2_PACKAGE_LIBICONV),libiconv) \
+	$(TARGET_NLS_DEPENDENCIES)
+
+LINKNX_CONF_ENV = LIBS=$(TARGET_NLS_LIBS)
 
 ifeq ($(BR2_PACKAGE_LIBCURL),y)
 LINKNX_CONF_OPTS += --with-libcurl=$(STAGING_DIR)/usr
@@ -46,9 +49,9 @@ else
 LINKNX_CONF_OPTS += --without-lua
 endif
 
-ifeq ($(BR2_PACKAGE_MYSQL),y)
+ifeq ($(BR2_PACKAGE_MARIADB),y)
 LINKNX_CONF_OPTS += --with-mysql=$(STAGING_DIR)/usr
-LINKNX_DEPENDENCIES += mysql
+LINKNX_DEPENDENCIES += mariadb
 else
 LINKNX_CONF_OPTS += --without-mysql
 endif

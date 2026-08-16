@@ -1,6 +1,6 @@
-# retrieved by scancpan from http://cpan.metacpan.org/
-md5  6d497ec74f3cf88ad41898fcb8b01145  LWP-Protocol-https-6.09.tar.gz
-sha256  16cfe1a511690b066db5667c8714802ee2b9c5d28a31a3e7bd36fbc70a3af592  LWP-Protocol-https-6.09.tar.gz
+# retrieved by scancpan from https://cpan.metacpan.org/
+md5  62650d02150a157f486375ca588b6c9d  LWP-Protocol-https-6.12.tar.gz
+sha256  7dd36d3a4eacfa143a47a2bbbc56ea9413887e2d7376c1d35bbbb2be912b616c  LWP-Protocol-https-6.12.tar.gz
 
 # computed by scancpan
-sha256  294e73f9bd40ea600e9478cd57489a7da72558a83c6a66f37a82e4e0d5a706d9  LICENSE
+sha256  e4def55436b2bd99fe2cdbf546a72ad5958327e28831db9b5adb497c6bd580ba  LICENSE

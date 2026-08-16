@@ -14,7 +14,8 @@ HOST_GETTEXT_TINY_LICENSE_FILES = LICENSE extra/COPYING
 GETTEXT_TINY_PROVIDES = gettext
 
 # needed for gettextize
-GETTEXT_TINY_ARCHIVE_VERSION = 0.20.1
+# Please keep in sync with package/gettext-gnu/gettext-gnu.mk
+GETTEXT_TINY_ARCHIVE_VERSION = 0.22.4
 
 GETTEXT_TINY_EXTRA_GETTEXT_FILES = \
 	gettext-tools/misc/gettextize.in \
@@ -95,7 +96,7 @@ define HOST_GETTEXT_TINY_INSTALL_CMDS
 	$(Q)touch $(HOST_DIR)/share/gettext-tiny/ABOUT-NLS
 
 	# for gettextize
-	ln -sf $(HOST_DIR)/usr/share/gettext-tiny $(HOST_DIR)/usr/share/gettext
+	ln -sf $(HOST_DIR)/share/gettext-tiny $(HOST_DIR)/share/gettext
 endef
 
 # Install simple echo wrapper for gettext tool

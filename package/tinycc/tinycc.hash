@@ -1,3 +1,5 @@
-# Two entries for compatibility for different buildroot versions for easier experimenting.
+# Several entries for compatibility across buildroot versions (the git tarball
+# name carries a format suffix that changed over time) for easier experimenting.
 sha256  773e61ff66c607e3a06b5fe9b04b38456b853066f0ef740415c1f3986ab3cb01  tinycc-e9f59c804d41da9ba56493d5882fb75340d23c8e.tar.gz
+sha256  a84a2f20b23dab2161971213b5e8457129b63c1022e3f8c1250637a0dd3d334e  tinycc-e9f59c804d41da9ba56493d5882fb75340d23c8e-br1.tar.gz
 sha256  138eed79e83ef48ceebc1a4320a8da1630c0620f0cdd4221da14ebd8be441aba  tinycc-e9f59c804d41da9ba56493d5882fb75340d23c8e-git4.tar.gz

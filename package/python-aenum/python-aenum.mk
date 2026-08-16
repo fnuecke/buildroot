@@ -4,20 +4,19 @@
 #
 ################################################################################
 
-PYTHON_AENUM_VERSION = 2.2.3
+PYTHON_AENUM_VERSION = 3.1.15
 PYTHON_AENUM_SOURCE = aenum-$(PYTHON_AENUM_VERSION).tar.gz
-PYTHON_AENUM_SITE = https://files.pythonhosted.org/packages/6f/6a/8ed729e0add885d7a559ebb06133029b1f8c4bd66cbf1bdee1ec969fb310
+PYTHON_AENUM_SITE = https://files.pythonhosted.org/packages/d0/f8/33e75863394f42e429bb553e05fda7c59763f0fd6848de847a25b3fbccf6
 PYTHON_AENUM_SETUP_TYPE = setuptools
 PYTHON_AENUM_LICENSE = BSD-3-Clause
 PYTHON_AENUM_LICENSE_FILES = aenum/LICENSE
 
-ifeq ($(BR2_PACKAGE_PYTHON),y)
-# only needed/valid for python 3.x
-define PYTHON_AENUM_RM_PY3_FILE
-	rm -f $(TARGET_DIR)/usr/lib/python*/site-packages/aenum/test_v3.py
+# _py2.py uses syntax not compatible with Python3.
+# Remove _py2.py to avoid compilation error.
+define PYTHON_AENUM_REMOVE_PY2_PY
+	rm $(@D)/aenum/_py2.py
 endef
 
-PYTHON_AENUM_POST_INSTALL_TARGET_HOOKS += PYTHON_AENUM_RM_PY3_FILE
-endif
+PYTHON_AENUM_POST_EXTRACT_HOOKS = PYTHON_AENUM_REMOVE_PY2_PY
 
 $(eval $(python-package))

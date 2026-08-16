@@ -4,10 +4,10 @@
 #
 ################################################################################
 
-GCNANO_BINARIES_LIB_VERSION = 6.2.4
-GCNANO_BINARIES_DRIVER_VERSION = $(GCNANO_BINARIES_LIB_VERSION).p4
-GCNANO_BINARIES_USERLAND_VERSION = $(GCNANO_BINARIES_LIB_VERSION).p4-20190626
-GCNANO_BINARIES_VERSION = c01642ed5e18cf09ecd905af193e935cb3be95ed
+GCNANO_BINARIES_LIB_VERSION = 6.4.13
+GCNANO_BINARIES_DRIVER_VERSION = $(GCNANO_BINARIES_LIB_VERSION)
+GCNANO_BINARIES_USERLAND_VERSION = $(GCNANO_BINARIES_LIB_VERSION)-20230517
+GCNANO_BINARIES_VERSION = 5d02efd5cb4cfa85307633891f3cf87550a8bc1d
 GCNANO_BINARIES_SITE = $(call github,STMicroelectronics,gcnano-binaries,$(GCNANO_BINARIES_VERSION))
 
 GCNANO_BINARIES_LICENSE = MIT, Vivante End User Software License Terms
@@ -18,14 +18,13 @@ GCNANO_BINARIES_DEPENDENCIES = linux wayland libdrm
 
 GCNANO_BINARIES_INSTALL_STAGING = YES
 
-GCNANO_BINARIES_PROVIDES = libegl libgles
+GCNANO_BINARIES_PROVIDES = libegl libgles libgbm
 
 # The Github repository doesn't contain the source code as-is: it
 # contains a tarball with the kernel driver source code, and a
 # self-extractible binary for the user-space parts. So we extract both
 # below, and also extract the EULA text from the self-extractible binary
 define GCNANO_BINARIES_EXTRACT_HELPER
-	tar --strip-components=1 -xJf $(@D)/gcnano-driver-$(GCNANO_BINARIES_DRIVER_VERSION).tar.xz -C $(@D)
 	awk 'BEGIN      { start = 0; } \
 		/^EOEULA/  { start = 0; } \
 			{ if (start) print; } \
@@ -36,32 +35,32 @@ endef
 
 GCNANO_BINARIES_POST_EXTRACT_HOOKS += GCNANO_BINARIES_EXTRACT_HELPER
 
+GCNANO_BINARIES_MODULE_SUBDIRS = gcnano-driver-stm32mp
+
 GCNANO_BINARIES_MODULE_MAKE_OPTS = \
 	KERNEL_DIR=$(LINUX_DIR) \
-	SOC_PLATFORM=st-st \
-	AQROOT=$(@D) \
+	SOC_PLATFORM=st-mp1 \
+	AQROOT=$(@D)/gcnano-driver-stm32mp \
 	DEBUG=0
-
-GCNANO_BINARIES_LIBRARIES = \
-	gbm_viv libEGL libGAL libgbm libGLESv1_CM \
-	libGLESv2 libGLSLC libOpenVG libVSC
 
 GCNANO_BINARIES_USERLAND_SUBDIR = gcnano-userland-multi-$(GCNANO_BINARIES_USERLAND_VERSION)
 
-GCNANO_BINARIES_PKG_CONFIGS = egl gbm glesv1_cm glesv2 vg
-
 define GCNANO_BINARIES_INSTALL
-	$(foreach lib,$(GCNANO_BINARIES_LIBRARIES), \
-		$(INSTALL) -D -m 0755 $(@D)/$(GCNANO_BINARIES_USERLAND_SUBDIR)/usr/lib/$(lib).$(GCNANO_BINARIES_LIB_VERSION).multi.release.so \
-			$(1)/usr/lib/$(lib).$(GCNANO_BINARIES_LIB_VERSION).multi.release.so ; \
-		cp -a $(@D)/$(GCNANO_BINARIES_USERLAND_SUBDIR)/usr/lib/$(lib).so* $(1)/usr/lib
-	)
+	cd $(@D)/$(GCNANO_BINARIES_USERLAND_SUBDIR)/release/drivers/ ; \
+	find . -type f -exec $(INSTALL) -D -m 0755 {} $(1)/usr/lib/{} \; ; \
+	for sharelib in *.so.*; do \
+		dev_lib_name=`echo $${sharelib} | awk -F'.so' '{print $$1}'`.so ; \
+		link_name=`$(TARGET_OBJDUMP) -x $${sharelib} 2>/dev/null | grep SONAME | sed 's/.* //'` ; \
+		ln -sf $${sharelib} $(1)/usr/lib/$${dev_lib_name} ; \
+		ln -sf $${sharelib} $(1)/usr/lib/$${link_name} ; \
+	done
 	mkdir -p $(1)/usr/include
-	cp -a $(@D)/$(GCNANO_BINARIES_USERLAND_SUBDIR)/usr/include/* $(1)/usr/include/
-	$(foreach pkgconfig,$(GCNANO_BINARIES_PKG_CONFIGS), \
-		$(INSTALL) -D -m 0644 $(@D)/$(GCNANO_BINARIES_USERLAND_SUBDIR)/usr/lib/pkgconfig/$(pkgconfig).pc \
-			$(1)/usr/lib/pkgconfig/$(pkgconfig).pc
-	)
+	cp -a $(@D)/$(GCNANO_BINARIES_USERLAND_SUBDIR)/release/include/* $(1)/usr/include/
+	cd $(@D)/$(GCNANO_BINARIES_USERLAND_SUBDIR)/pkgconfig/ ; \
+	for file in *.pc ; do \
+		sed -e "s|#PREFIX#|/usr|" -e "s|#VERSION#|22.0.3|" $$file > $$file.temp ; \
+		$(INSTALL) -D -m 0644 $$file.temp $(1)/usr/lib/pkgconfig/$$file ; \
+	done
 endef
 
 define GCNANO_BINARIES_INSTALL_TARGET_CMDS

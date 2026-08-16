@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-LIVE555_VERSION = 2020.08.19
+LIVE555_VERSION = 2021.05.03
 LIVE555_SOURCE = live.$(LIVE555_VERSION).tar.gz
 LIVE555_SITE = http://www.live555.com/liveMedia/public
 # There is a COPYING file with the GPL-3.0 license text, but none of
@@ -13,6 +13,8 @@ LIVE555_SITE = http://www.live555.com/liveMedia/public
 # http://live555.com/liveMedia/faq.html#copyright-and-license
 LIVE555_LICENSE = LGPL-3.0+
 LIVE555_LICENSE_FILES = COPYING.LESSER
+LIVE555_CPE_ID_VENDOR = live555
+LIVE555_CPE_ID_PRODUCT = streaming_media
 LIVE555_INSTALL_STAGING = YES
 
 LIVE555_CFLAGS = $(TARGET_CFLAGS)
@@ -37,7 +39,7 @@ else
 LIVE555_CFLAGS += -DNO_OPENSSL
 endif
 
-ifndef ($(BR2_ENABLE_LOCALE),y)
+ifneq ($(BR2_ENABLE_LOCALE),y)
 LIVE555_CFLAGS += -DLOCALE_NOT_USED
 endif
 

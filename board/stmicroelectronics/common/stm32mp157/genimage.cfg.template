@@ -1,6 +1,6 @@
 image sdcard.img {
 	hdimage {
-		gpt = "true"
+		partition-table-type = "gpt"
 	}
 
 	partition fsbl1 {
@@ -11,8 +11,9 @@ image sdcard.img {
 		image = "%ATFBIN%"
 	}
 
-	partition ssbl {
-		image = "u-boot.stm32"
+	partition fip {
+		image = "fip.bin"
+		size = 2M
 	}
 
 	partition rootfs {

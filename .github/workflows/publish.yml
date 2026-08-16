@@ -18,7 +18,7 @@ permissions:
   contents: write
 
 env:
-  BUILDROOT_DOCKER_IMAGE: ${{ vars.BUILDROOT_DOCKER_IMAGE || 'buildroot/base:20200814.2228' }}
+  BUILDROOT_DOCKER_IMAGE: ${{ vars.BUILDROOT_DOCKER_IMAGE || 'registry.gitlab.com/buildroot.org/buildroot/base:20230207.1123' }}
   VERSION: ${{ github.event.release.tag_name || inputs.version }}
   SHOULD_PUBLISH: ${{ github.event_name == 'release' || inputs.publish }}
 

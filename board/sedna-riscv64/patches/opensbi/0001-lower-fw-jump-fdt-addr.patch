@@ -2,15 +2,12 @@ fw_jump relocates the DTB to FW_JUMP_FDT_ADDR before entering the kernel.
 Address is absolute, it controls minimum amount of RAM.
 
 Upstream default is +34MB. With the SECTION_ALIGN fix the kernel now ends
-around 4.4MB physical (loaded at +2MB), so +0x600000 (6MB) will still have
+around 4.9MB physical (loaded at +2MB), so +0x600000 (6MB) will still have
 more than 1MB buffer, and our realistic practical min memory can go down
 to ~10MB.
 
-If the kernel ever grows past ~6MB again this must be raised. To check:
-    riscv64-linux-nm vmlinux | grep -w _end
-
---- opensbi-0.8/platform/generic/config.mk
-+++ opensbi-0.8/platform/generic/config.mk
+--- opensbi-1.3/platform/generic/objects.mk
++++ opensbi-1.3/platform/generic/objects.mk
 @@ -28,7 +28,7 @@
    # This needs to be 2MB aligned for 64-bit system
    FW_JUMP_ADDR=$(shell printf "0x%X" $$(($(FW_TEXT_START) + 0x200000)))
