@@ -32,3 +32,17 @@ rm -f "$TARGET_DIR"/usr/lib/libform*.so* \
 # luac is the offline bytecode compiler. Not needed for interpreter.
 # ---------------------------------------------------------------------------
 rm -f "$TARGET_DIR"/usr/bin/luac
+
+# ---------------------------------------------------------------------------
+# Drop a bunch of luaposix things we don't really need (can be done via e.g.
+# os.execute instead), to save some more rootfs disk space.
+# ---------------------------------------------------------------------------
+for mod in ctype grp pwd sched syslog; do
+	rm -f "$TARGET_DIR/usr/lib/lua/5.4/posix/$mod.so"
+done
+for mod in msg resource socket statvfs times; do
+	rm -f "$TARGET_DIR/usr/lib/lua/5.4/posix/sys/$mod.so"
+done
+for f in _base _bitwise _strict compat deprecated sys util version; do
+	rm -f "$TARGET_DIR/usr/share/lua/5.4/posix/$f.lua"
+done

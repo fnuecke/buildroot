@@ -1,0 +1,19 @@
+#!/bin/sh
+# Derive a stable, unique default hostname from the NIC MAC.
+
+case "$1" in
+	stop) exit 0 ;;
+esac
+
+current="$(cat /etc/hostname 2>/dev/null)"
+if [ -n "$current" ] && [ "$current" != "localhost" ]; then
+	exit 0
+fi
+
+mac="$(cat /sys/class/net/eth0/address 2>/dev/null)"
+if [ -z "$mac" ] || [ "$mac" = "00:00:00:00:00:00" ]; then
+	exit 0
+fi
+
+echo "sedna-$(echo "$mac" | tr -d ':' | tail -c 7)" > /etc/hostname
+/bin/hostname -F /etc/hostname
