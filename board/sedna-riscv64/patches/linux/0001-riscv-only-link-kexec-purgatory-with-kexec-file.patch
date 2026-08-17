@@ -1,0 +1,15 @@
+riscv: only link the kexec purgatory when KEXEC_FILE is enabled
+ 
+Gate it on CONFIG_KEXEC_FILE, the only consumer (via elf_kexec.c).
+ 
+--- a/arch/riscv/Kbuild
++++ b/arch/riscv/Kbuild
+@@ -5,7 +5,7 @@ obj-$(CONFIG_BUILTIN_DTB) += boot/dts/
+ obj-y += errata/
+ obj-$(CONFIG_KVM) += kvm/
+ 
+-obj-$(CONFIG_ARCH_SUPPORTS_KEXEC_PURGATORY) += purgatory/
++obj-$(CONFIG_KEXEC_FILE) += purgatory/
+ 
+ # for cleaning
+ subdir- += boot
