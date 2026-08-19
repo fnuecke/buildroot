@@ -40,7 +40,7 @@ rm -f "$TARGET_DIR"/usr/bin/luac
 for mod in ctype grp pwd sched syslog; do
 	rm -f "$TARGET_DIR/usr/lib/lua/5.4/posix/$mod.so"
 done
-for mod in msg resource socket statvfs times; do
+for mod in msg resource statvfs times; do
 	rm -f "$TARGET_DIR/usr/lib/lua/5.4/posix/sys/$mod.so"
 done
 for f in _base _bitwise _strict compat deprecated sys util version; do
