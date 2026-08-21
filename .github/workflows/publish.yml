@@ -114,4 +114,11 @@ jobs:
             exit 0
           fi
           git commit -m "sedna-buildroot $VERSION"
-          git push
+          for attempt in 1 2 3 4 5; do
+            if git push; then
+              exit 0
+            fi
+            git pull --rebase
+          done
+          echo "Failed to push after 5 attempts."
+          exit 1
