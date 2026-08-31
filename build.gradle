@@ -73,7 +73,6 @@ task configureBuildroot(type: Exec) {
     }
     inputs.file buildrootDefconfig
     outputs.file buildrootConfig
-    onlyIf { !buildrootConfig.exists() }
 }
 
 task cleanBuildroot(type: Exec) {
@@ -88,6 +87,8 @@ clean.dependsOn cleanBuildroot
 
 final def buildrootImages = ["output/images/fw_jump.bin", "output/images/Image", "output/images/rootfs.ext2"]
 
+final def buildrootInputs = files(buildrootDefconfig, "board/sedna-riscv64", "package/tinycc")
+
 task compileBuildroot(type: Exec) {
     if (!isUnix) {
         logger.log(LogLevel.WARN, "Can only make buildroot on Linux. Expecting output files to have been manually placed in [output/images/].")
@@ -97,8 +98,10 @@ task compileBuildroot(type: Exec) {
         commandLine(makeCommandLine(["make"]))
         doFirst { buildrootDockerHome.mkdirs() }
     }
+    inputs.files buildrootInputs
+    inputs.property "dockerImage", buildrootDockerImage
+    inputs.property "useDocker", useDocker
     outputs.files buildrootImages
-    outputs.upToDateWhen { false }
     dependsOn configureBuildroot
 }
 
@@ -109,8 +112,10 @@ task generateLegalInfo(type: Exec) {
         commandLine(makeCommandLine(["make", "legal-info"]))
         doFirst { buildrootDockerHome.mkdirs() }
     }
+    inputs.files buildrootInputs
+    inputs.property "dockerImage", buildrootDockerImage
+    inputs.property "useDocker", useDocker
     outputs.dirs "output/legal-info/licenses"
-    outputs.upToDateWhen { false }
     dependsOn configureBuildroot
 }
 
