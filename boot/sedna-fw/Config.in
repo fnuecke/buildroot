@@ -1,0 +1,7 @@
+config BR2_TARGET_SEDNA_FW
+	bool "sedna-fw"
+	depends on BR2_riscv
+	help
+	  Minimal M-mode firmware for the Sedna RISC-V board: an SBI
+	  runtime (base, TIME, RFENCE) plus a boot loader that loads
+	  /boot/Image from the first bootable virtio block device.

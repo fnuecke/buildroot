@@ -85,9 +85,9 @@ task cleanBuildroot(type: Exec) {
 }
 clean.dependsOn cleanBuildroot
 
-final def buildrootImages = ["output/images/fw_jump.bin", "output/images/Image", "output/images/rootfs.ext2"]
+final def buildrootImages = ["output/images/firmware.bin", "output/images/firmware.properties", "output/images/fw_jump.bin", "output/images/Image", "output/images/rootfs.ext2"]
 
-final def buildrootInputs = files(buildrootDefconfig, "board/sedna-riscv64", "package/tinycc")
+final def buildrootInputs = files(buildrootDefconfig, "board/sedna-riscv64", "package/tinycc", "boot/sedna-fw")
 
 task compileBuildroot(type: Exec) {
     if (!isUnix) {
@@ -95,7 +95,7 @@ task compileBuildroot(type: Exec) {
         enabled = false
     } else {
         warnIfNativeMake()
-        commandLine(makeCommandLine(["make"]))
+        commandLine(makeCommandLine(["make", "sedna-fw-rebuild", "linux-reinstall", "all"]))
         doFirst { buildrootDockerHome.mkdirs() }
     }
     inputs.files buildrootInputs
