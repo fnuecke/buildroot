@@ -24,14 +24,6 @@ public final class Buildroot {
         return Integer.parseInt(value);
     }
 
-    public static InputStream getFirmware() {
-        return open("generated/fw_jump.bin");
-    }
-
-    public static InputStream getLinuxImage() {
-        return open("generated/Image");
-    }
-
     public static InputStream getRootFilesystem() {
         return open("generated/rootfs.ext2");
     }

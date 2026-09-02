@@ -85,7 +85,7 @@ task cleanBuildroot(type: Exec) {
 }
 clean.dependsOn cleanBuildroot
 
-final def buildrootImages = ["output/images/firmware.bin", "output/images/firmware.properties", "output/images/fw_jump.bin", "output/images/Image", "output/images/rootfs.ext2"]
+final def buildrootImages = ["output/images/firmware.bin", "output/images/firmware.properties", "output/images/rootfs.ext2"]
 
 final def buildrootInputs = files(buildrootDefconfig, "board/sedna-riscv64", "package/tinycc", "boot/sedna-fw")
 
