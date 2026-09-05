@@ -1,0 +1,43 @@
+--- tinycc-e9f59c804d41da9ba56493d5882fb75340d23c8e/riscv64-asm.c
++++ tinycc-e9f59c804d41da9ba56493d5882fb75340d23c8e/riscv64-asm.c.patched
+@@ -643,6 +643,7 @@
+     case TOK_ASM_sltu:
+     case TOK_ASM_sltiu:
+         asm_data_processing_opcode(s1, token);
++        return;
+ 
+     case TOK_ASM_lb:
+     case TOK_ASM_lh:
+@@ -712,9 +713,13 @@
+ ST_FUNC int asm_parse_regvar (int t)
+ {
+     if (t >= TOK_ASM_x0 && t <= TOK_ASM_pc) { /* register name */
++        if (t >= TOK_ASM_zero && t <= TOK_ASM_t6)
++            return t - TOK_ASM_zero;
+         switch (t) {
++            case TOK_ASM_s0:
++                return 8;
+             case TOK_ASM_pc:
+-                return -1; // TODO: Figure out where it can be used after all
++                tcc_error("PC register not implemented.");
+             default:
+                 return t - TOK_ASM_x0;
+         }
+--- tinycc-e9f59c804d41da9ba56493d5882fb75340d23c8e/riscv64-tok.h
++++ tinycc-e9f59c804d41da9ba56493d5882fb75340d23c8e/riscv64-tok.h.patched
+@@ -41,7 +41,6 @@
+ /* register macros */
+ 
+  DEF_ASM(zero)
+-/*
+  DEF_ASM(ra)
+  DEF_ASM(sp)
+  DEF_ASM(gp)
+@@ -75,7 +74,6 @@
+  DEF_ASM(t6)
+ 
+  DEF_ASM(s0) // = x8
+-*/
+ 
+  DEF_ASM(pc)
+ 
