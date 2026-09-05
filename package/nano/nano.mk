@@ -22,9 +22,10 @@ endif
 ifeq ($(BR2_PACKAGE_NANO_TINY),y)
 NANO_CONF_OPTS += \
 	--enable-tiny \
+	--enable-mouse \
+	--enable-nanorc \
 	--disable-libmagic \
-	--disable-color \
-	--disable-nanorc
+	--disable-color
 define NANO_INSTALL_TARGET_CMDS
 	$(INSTALL) -m 0755 $(@D)/src/nano $(TARGET_DIR)/usr/bin/nano
 endef
