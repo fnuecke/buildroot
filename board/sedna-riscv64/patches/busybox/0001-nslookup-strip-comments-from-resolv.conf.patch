@@ -1,0 +1,25 @@
+resolv.conf(5) allows '#' and ';' comments, and udhcpc's script tags the
+entries it adds with the interface they came from so it can drop them again:
+
+    nameserver 192.168.0.1 # eth0
+
+parse_resolvconf() takes everything up to the newline as the argument, so the
+comment becomes part of the server address and every lookup fails with
+
+    nslookup: bad address '192.168.0.1 # eth0'
+
+while musl's resolver, which stops at the first space, resolves fine. The same
+truncation applies to "search" and "domain".
+---
+--- a/networking/nslookup.c
++++ b/networking/nslookup.c
+@@ -721,6 +721,9 @@ static void parse_resolvconf(void)
+ 			char *p, *arg;
+ 			char *tokstate;
+ 
++			line[strcspn(line, "#;")] = '\0';
++			trim(line);
++
+ 			p = strtok_r(line, " \t\n", &tokstate);
+ 			if (!p)
+ 				continue;
