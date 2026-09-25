@@ -4,6 +4,7 @@
 
 /* The RISC-V Linux Image header, at the start of the loaded file. */
 #define IMAGE_TEXT_OFFSET 8
+#define IMAGE_SIZE_OFFSET 16
 #define IMAGE_MAGIC2_OFFSET 56
 #define IMAGE_MAGIC2 0x05435352
 
@@ -53,6 +54,12 @@ static int try_boot(const u64 base) {
     if (*(const u32 *) (load + IMAGE_MAGIC2_OFFSET) != IMAGE_MAGIC2
         || *(const u64 *) (load + IMAGE_TEXT_OFFSET) != KERNEL_OFFSET) {
         uart_puts("sedna-fw: /boot/Image is not a kernel for this machine\r\n");
+        blk_reset(base);
+        return -1;
+    }
+    /* The file lacks bss; image_size is the full size once running. */
+    if (*(const u64 *) (load + IMAGE_SIZE_OFFSET) > room) {
+        uart_puts(NO_MEMORY);
         blk_reset(base);
         return -1;
     }
