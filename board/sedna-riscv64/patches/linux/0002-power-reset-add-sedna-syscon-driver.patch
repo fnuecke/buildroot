@@ -1,0 +1,151 @@
+power: reset: add Sedna system controller driver
+ 
+Handles host poweroff and reboot requests via orderly_poweroff() and
+orderly_reboot(). Based on gemini-poweroff.
+ 
+diff --git a/drivers/power/reset/Kconfig b/drivers/power/reset/Kconfig
+--- a/drivers/power/reset/Kconfig
++++ b/drivers/power/reset/Kconfig
+@@ -242,6 +242,13 @@ config POWER_RESET_KEYSTONE
+ 	help
+ 	  Reboot support for the KEYSTONE SoCs.
+ 
++config POWER_RESET_SEDNA_SYSCON
++	bool "Sedna system controller power request driver"
++	depends on OF && HAS_IOMEM
++	help
++	  This driver handles poweroff and reboot requests from the host
++	  of a Sedna virtual machine.
++
+ config POWER_RESET_SYSCON
+ 	bool "Generic SYSCON regmap reset driver"
+ 	depends on OF
+diff --git a/drivers/power/reset/Makefile b/drivers/power/reset/Makefile
+--- a/drivers/power/reset/Makefile
++++ b/drivers/power/reset/Makefile
+@@ -28,6 +28,7 @@ obj-$(CONFIG_POWER_RESET_VERSATILE) += arm-versatile-reboot.o
+ obj-$(CONFIG_POWER_RESET_VEXPRESS) += vexpress-poweroff.o
+ obj-$(CONFIG_POWER_RESET_XGENE) += xgene-reboot.o
+ obj-$(CONFIG_POWER_RESET_KEYSTONE) += keystone-reset.o
++obj-$(CONFIG_POWER_RESET_SEDNA_SYSCON) += sedna-syscon.o
+ obj-$(CONFIG_POWER_RESET_SYSCON) += syscon-reboot.o
+ obj-$(CONFIG_POWER_RESET_SYSCON_POWEROFF) += syscon-poweroff.o
+ obj-$(CONFIG_POWER_RESET_RMOBILE) += rmobile-reset.o
+diff --git a/drivers/power/reset/sedna-syscon.c b/drivers/power/reset/sedna-syscon.c
+new file mode 100644
+--- /dev/null
++++ b/drivers/power/reset/sedna-syscon.c
+@@ -0,0 +1,113 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Sedna system controller power requests
++ *
++ * Based on the Gemini power management controller driver.
++ */
++#include <linux/of.h>
++#include <linux/platform_device.h>
++#include <linux/bitops.h>
++#include <linux/interrupt.h>
++#include <linux/io.h>
++#include <linux/reboot.h>
++
++#define SEDNA_SYSCON_ID		('S' << 24 | 'S' << 16 | 'C' << 8)
++#define	SEDNA_SYSCON_IDREG	0x04
++#define	SEDNA_SYSCON_CTRLREG	0x08
++#define	SEDNA_SYSCON_STATREG	0x0c
++
++#define SEDNA_CTRL_ENABLE	BIT(1)
++
++#define SEDNA_STAT_POWEROFF	BIT(0)
++#define SEDNA_STAT_REBOOT	BIT(1)
++
++struct sedna_syscon {
++	struct device		*dev;
++	void __iomem		*base;
++};
++
++static irqreturn_t sedna_syscon_interrupt(int irq, void *data)
++{
++	struct sedna_syscon *ssc = data;
++	u32 stat;
++
++	/* ACK the IRQ by clearing the status bits we handle */
++	stat = readl(ssc->base + SEDNA_SYSCON_STATREG);
++	writel(stat, ssc->base + SEDNA_SYSCON_STATREG);
++
++	if (stat & SEDNA_STAT_POWEROFF) {
++		dev_info(ssc->dev, "poweroff requested\n");
++		orderly_poweroff(true);
++	} else if (stat & SEDNA_STAT_REBOOT) {
++		dev_info(ssc->dev, "reboot requested\n");
++		orderly_reboot();
++	}
++
++	return IRQ_HANDLED;
++}
++
++static int sedna_syscon_probe(struct platform_device *pdev)
++{
++	struct device *dev = &pdev->dev;
++	struct sedna_syscon *ssc;
++	u32 val;
++	int irq;
++	int ret;
++
++	ssc = devm_kzalloc(dev, sizeof(*ssc), GFP_KERNEL);
++	if (!ssc)
++		return -ENOMEM;
++
++	ssc->base = devm_platform_ioremap_resource(pdev, 0);
++	if (IS_ERR(ssc->base))
++		return PTR_ERR(ssc->base);
++
++	irq = platform_get_irq(pdev, 0);
++	if (irq < 0)
++		return irq;
++
++	ssc->dev = dev;
++
++	val = readl(ssc->base + SEDNA_SYSCON_IDREG);
++	val &= 0xFFFFFF00U;
++	if (val != SEDNA_SYSCON_ID) {
++		dev_err(dev, "wrong system controller ID: %08x\n",
++			val);
++		return -ENODEV;
++	}
++
++	/* Clear the IRQ */
++	writel(SEDNA_STAT_POWEROFF | SEDNA_STAT_REBOOT,
++	       ssc->base + SEDNA_SYSCON_STATREG);
++
++	ret = devm_request_irq(dev, irq, sedna_syscon_interrupt, 0,
++			       "syscon", ssc);
++	if (ret)
++		return ret;
++
++	/*
++	 * Enable the system controller. Until this is done, the host
++	 * cannot request a poweroff or reboot and powers off directly.
++	 */
++	writel(SEDNA_CTRL_ENABLE, ssc->base + SEDNA_SYSCON_CTRLREG);
++
++	dev_info(dev, "Sedna system controller registered\n");
++
++	return 0;
++}
++
++static const struct of_device_id sedna_syscon_of_match[] = {
++	{
++		.compatible = "sedna,syscon",
++	},
++	{}
++};
++
++static struct platform_driver sedna_syscon_driver = {
++	.probe = sedna_syscon_probe,
++	.driver = {
++		.name = "sedna-syscon",
++		.of_match_table = sedna_syscon_of_match,
++	},
++};
++builtin_platform_driver(sedna_syscon_driver);
