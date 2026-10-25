@@ -15,8 +15,8 @@ typedef unsigned short u16;
 typedef unsigned int u32;
 typedef unsigned long u64;
 
-#define KERNEL_OFFSET 0x200000ul /* where the kernel Image expects to sit, relative to RAM base */
-#define SCRATCH_OFFSET 0x100000ul /* boot-time metadata buffers, free memory once the kernel runs */
+#define PAGE_SIZE 0x1000ul
+#define SCRATCH_SIZE (5 * 0x1000ul) /* boot-time metadata buffers below the DTB, free once the kernel runs */
 
 #define MAX_BLOCK_DEVICES 8
 
@@ -33,6 +33,7 @@ struct board_info {
     u64 ram_size;
     u64 blk[MAX_BLOCK_DEVICES];
     int blk_count;
+    u64 scratch;
 };
 
 extern struct board_info board;
@@ -54,7 +55,12 @@ void blk_reset(u64 base);
 /* ext2.c */
 #define EXT2_TOO_LARGE (-2l) /* the file does not fit the space the caller offered */
 int ext2_open(u64 base);
-long ext2_load(u64 base, const char *dir, const char *name, void *dst, u64 max);
+/* Looks up /dir/name for the calls below and returns its size, or -1. */
+long ext2_find(const char *dir, const char *name);
+/* The found file's first block, or NULL. Valid until the next ext2 call. */
+const u8 *ext2_first_block(void);
+/* Loads the found file to dst, returns its size or a negative value. */
+long ext2_load(void *dst, u64 max);
 
 /* sbi.c */
 void sbi_init(void);

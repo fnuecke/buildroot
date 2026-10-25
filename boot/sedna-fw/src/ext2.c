@@ -2,8 +2,8 @@
 /*
  * Read-only ext2 walker, enough to find and load one file by path. Classic revision-1 layout
  * only: no extents, no 64-bit block numbers, which is what the rootfs images this firmware boots
- * are built with. Metadata buffers live in scratch memory outside the firmware's reserved
- * region; they are boot-time only.
+ * are built with. Metadata buffers live in scratch memory below the device tree, outside the
+ * firmware's reserved region and the kernel; they are boot-time only.
  */
 
 #include "fw.h"
@@ -91,7 +91,7 @@ static int read_block(const u32 block, void *dst) {
 }
 
 int ext2_open(const u64 base) {
-    u8 *scratch = (u8 *) (board.ram_base + SCRATCH_OFFSET);
+    u8 *scratch = (u8 *) board.scratch;
     u8 *superblock_buffer = scratch;
     fs.group_descriptors = scratch + MAX_BLOCK_SIZE;
     fs.block_buffer = scratch + 2 * MAX_BLOCK_SIZE;
@@ -218,12 +218,7 @@ static u32 dir_lookup(const char *name) {
     return 0;
 }
 
-/*
- * Loads /dir/name to dst, coalescing contiguous blocks into large reads. Returns the file size,
- * or negative if the file is absent, too large, or unreadable.
- */
-long ext2_load(const u64 base, const char *dir, const char *name, void *dst, const u64 max) {
-    (void) base;
+long ext2_find(const char *dir, const char *name) {
     if (read_inode(ROOT_INODE) != 0) {
         return -1;
     }
@@ -235,7 +230,22 @@ long ext2_load(const u64 base, const char *dir, const char *name, void *dst, con
     if (file_inode == 0 || read_inode(file_inode) != 0) {
         return -1;
     }
+    return fs.inode.size;
+}
 
+const u8 *ext2_first_block(void) {
+    const long block = get_block(0);
+    if (block <= 0 || read_block((u32) block, fs.block_buffer) != 0) {
+        return 0;
+    }
+    return fs.block_buffer;
+}
+
+/*
+ * Loads the file ext2_find found to dst, coalescing contiguous blocks into large reads. Returns
+ * the file size, or negative if it is too large or unreadable.
+ */
+long ext2_load(void *dst, const u64 max) {
     const u64 size = fs.inode.size;
     const u32 block_count = (u32) ((size + fs.block_size - 1) / fs.block_size);
     if ((u64) block_count * fs.block_size > max) { /* whole blocks are written, so round up */
