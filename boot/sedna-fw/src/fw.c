@@ -39,7 +39,21 @@ extern u8 _fw_stack_top[]; /* the end of the resident firmware region */
 
 void enter_supervisor(u64 entry, void *dtb);
 
-static int try_boot(const u64 base) {
+static void set_root(const int index) {
+    static const char key[] = "root=/dev/vd";
+    const u32 length = sizeof(key) - 1;
+    for (u32 i = 0; i + length < board.bootargs_length; i++) {
+        char *disk = board.bootargs + i + length;
+        if ((i == 0 || board.bootargs[i - 1] == ' ') && memcmp(board.bootargs + i, key, length) == 0
+            && *disk >= 'a' && *disk <= 'z') {
+            *disk = (char) ('a' + index);
+            return;
+        }
+    }
+}
+
+static int try_boot(const int index) {
+    const u64 base = board.blk[index];
     if (blk_init(base) != 0) {
         return -1;
     }
@@ -89,6 +103,7 @@ static int try_boot(const u64 base) {
     csr_clear(mstatus, MSTATUS_MPP_MASK);
     csr_set(mstatus, MSTATUS_MPP_S);
 
+    set_root(index);
     enter_supervisor(load, board.dtb);
     return -1; /* unreachable */
 }
@@ -122,7 +137,7 @@ void fw_main(void *dtb) {
     /* Rescan forever: on this board, block device media can appear while we wait. */
     for (;;) {
         for (int i = 0; i < board.blk_count; i++) {
-            try_boot(board.blk[i]);
+            try_boot(i);
         }
         report_once(NO_DISK);
         nap();

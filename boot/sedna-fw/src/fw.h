@@ -1,11 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 /*
  * Minimal M-mode firmware for the Sedna RISC-V board.
- *
- * Two jobs: load /boot/Image from the first bootable virtio block device into memory and enter it
- * in S-mode, then stay resident as the SBI runtime (base, TIME, RFENCE) the kernel needs. Every
- * address comes from the device tree the board passes in a1; nothing but the link address is
- * baked in.
  */
 #ifndef FW_H
 #define FW_H
@@ -33,6 +28,8 @@ struct board_info {
     u64 ram_size;
     u64 blk[MAX_BLOCK_DEVICES];
     int blk_count;
+    char *bootargs; /* /chosen/bootargs in the DTB, if any */
+    u32 bootargs_length;
     u64 scratch;
 };
 

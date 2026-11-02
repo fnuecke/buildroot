@@ -1,9 +1,4 @@
 /* SPDX-License-Identifier: MIT */
-/*
- * Minimal flattened-device-tree scan: pulls the UART, CLINT, memory range and virtio block
- * device windows out of the blob the board hands over. This walks our own board's tree, so it
- * assumes two address and two size cells throughout, which the root and soc nodes declare.
- */
 
 #include "fw.h"
 
@@ -35,6 +30,7 @@ struct node_state {
     int is_clint;
     int is_virtio;
     int is_memory;
+    int disabled; /* status is neither "okay" nor "ok", the kernel skips such nodes */
     u64 size;
 };
 
@@ -56,7 +52,8 @@ static void compatible_matches(const char *list, const u32 len, struct node_stat
 }
 
 static void commit(struct node_state *node) {
-    if (!node->has_reg) {
+    if (!node->has_reg || node->disabled) {
+        node->has_reg = node->disabled = 0;
         node->is_uart = node->is_clint = node->is_virtio = node->is_memory = 0;
         return;
     }
@@ -83,7 +80,7 @@ int fdt_scan(void *dtb) {
     board.dtb = dtb;
     board.dtb_size = be32(&header->totalsize);
 
-    const u8 *structure = (const u8 *) dtb + be32(&header->off_dt_struct);
+    u8 *structure = (u8 *) dtb + be32(&header->off_dt_struct);
     const char *strings = (const char *) dtb + be32(&header->off_dt_strings);
 
     struct node_state node = {0};
@@ -108,7 +105,7 @@ int fdt_scan(void *dtb) {
             case FDT_PROP: {
                 const u32 length = be32(structure + offset);
                 const u32 name_offset = be32(structure + offset + 4);
-                const u8 *value = structure + offset + 8;
+                u8 *value = structure + offset + 8;
                 offset += 8 + ((length + 3) & ~3u);
 
                 const char *name = strings + name_offset;
@@ -118,6 +115,12 @@ int fdt_scan(void *dtb) {
                     node.has_reg = 1;
                 } else if (strcmp(name, "compatible") == 0) {
                     compatible_matches((const char *) value, length, &node);
+                } else if (strcmp(name, "status") == 0) {
+                    node.disabled = strcmp((const char *) value, "okay") != 0
+                        && strcmp((const char *) value, "ok") != 0;
+                } else if (strcmp(name, "bootargs") == 0) {
+                    board.bootargs = (char *) value;
+                    board.bootargs_length = length;
                 } else if (strcmp(name, "device_type") == 0 && length >= 7
                     && memcmp(value, "memory", 7) == 0) {
                     node.is_memory = 1;
